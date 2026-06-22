@@ -1,0 +1,158 @@
+import { useState, useEffect } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext.jsx'
+import Nav from '../components/Nav.jsx'
+
+export default function Auth() {
+  const [params]        = useSearchParams()
+  const [tab, setTab]   = useState(params.get('tab') === 'signup' ? 'signup' : 'login')
+  const [fields, setFields] = useState({ callsign: '', email: '', password: '' })
+  const [msg, setMsg]   = useState(null) // { text, type }
+  const [loading, setLoading] = useState(false)
+  const [csStatus, setCsStatus] = useState(null) // null | 'checking' | 'ok' | 'error'
+  const { user, login } = useAuth()
+  const navigate        = useNavigate()
+  const returnTo        = params.get('return') || '/'
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) navigate(returnTo, { replace: true })
+  }, [user])
+
+  const set = (k) => (e) => {
+    setFields(f => ({ ...f, [k]: e.target.value }))
+    if (k === 'callsign') setCsStatus(null)
+  }
+
+  async function checkCallsign() {
+    const cs = fields.callsign.trim().toUpperCase()
+    if (!cs || tab !== 'signup') return
+    setCsStatus('checking')
+    try {
+      const res = await fetch(`/api/auth/check-callsign?callsign=${encodeURIComponent(cs)}`)
+      setCsStatus(res.ok ? 'ok' : 'error')
+    } catch {
+      setCsStatus(null)
+    }
+  }
+
+  async function submit(e) {
+    e.preventDefault()
+    setMsg(null)
+
+    const { callsign, email, password } = fields
+    if (tab === 'login' && (!callsign || !password))
+      return setMsg({ text: 'Callsign and password are required.', type: 'error' })
+    if (tab === 'signup' && (!callsign || !email || !password))
+      return setMsg({ text: 'All fields are required.', type: 'error' })
+    if (tab === 'signup' && password.length < 8)
+      return setMsg({ text: 'Password must be at least 8 characters.', type: 'error' })
+
+    setLoading(true)
+    try {
+      const body = tab === 'login'
+        ? { callsign, password }
+        : { callsign, email, password }
+
+      const res  = await fetch(`/api/auth/${tab === 'login' ? 'login' : 'signup'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (!res.ok) return setMsg({ text: data.error, type: 'error' })
+      login(data)
+      navigate(returnTo, { replace: true })
+    } catch {
+      setMsg({ text: 'Network error. Try again.', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <Nav crumb={tab === 'login' ? 'Log In' : 'Sign Up'} />
+
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px', minHeight: 'calc(100vh - 41px)' }}>
+        <div className="card" style={{ width: '100%', maxWidth: 420 }}>
+          {/* Tabs */}
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
+            {['login', 'signup'].map(t => (
+              <button key={t} onClick={() => { setTab(t); setMsg(null); setCsStatus(null) }} style={{
+                flex: 1, padding: '14px', fontSize: '0.95rem', fontWeight: 600,
+                background: 'none', border: 'none', cursor: 'pointer',
+                borderBottom: `2px solid ${tab === t ? 'var(--green-mid)' : 'transparent'}`,
+                color: tab === t ? 'var(--green-mid)' : 'var(--text-muted)',
+                marginBottom: -1,
+              }}>
+                {t === 'login' ? 'Log In' : 'Sign Up'}
+              </button>
+            ))}
+          </div>
+
+          <div className="card-body">
+            <form onSubmit={submit}>
+              <div className="form-row">
+                <label>Callsign</label>
+                <div style={{ position: 'relative' }}>
+                  <input type="text" placeholder="W7ABC" maxLength={14}
+                    value={fields.callsign}
+                    onChange={set('callsign')}
+                    onBlur={checkCallsign}
+                    style={{ textTransform: 'uppercase', paddingRight: csStatus ? '2rem' : undefined, width: '100%' }} />
+                  {csStatus === 'checking' && (
+                    <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>…</span>
+                  )}
+                  {csStatus === 'ok' && (
+                    <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--green-mid)', fontWeight: 700 }}>✓</span>
+                  )}
+                  {csStatus === 'error' && (
+                    <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#e53e3e', fontWeight: 700 }}>✗</span>
+                  )}
+                </div>
+                {tab === 'signup' && csStatus !== 'error' && (
+                  <div className="field-hint">This will be your username. Must match your POTA callsign.</div>
+                )}
+                {tab === 'signup' && csStatus === 'error' && (
+                  <div className="field-hint" style={{ color: '#e53e3e' }}>Callsign not found on POTA. You must have a POTA account to register.</div>
+                )}
+              </div>
+
+              {tab === 'signup' && (
+                <div className="form-row">
+                  <label>Email</label>
+                  <input type="email" placeholder="you@example.com"
+                    value={fields.email} onChange={set('email')} />
+                  <div className="field-hint">Only used for password reset. Never shared.</div>
+                </div>
+              )}
+
+              <div className="form-row" style={{ marginBottom: 20 }}>
+                <label>Password</label>
+                <input type="password" placeholder={tab === 'signup' ? 'Min. 8 characters' : '••••••••'}
+                  value={fields.password} onChange={set('password')} />
+              </div>
+
+              <button type="submit" className="btn-green" disabled={loading || (tab === 'signup' && (
+                !fields.callsign.trim() || !fields.email.trim() || fields.password.length < 8 || csStatus !== 'ok'
+              ))}>
+                {loading ? (tab === 'login' ? 'Logging in…' : 'Creating account…') : (tab === 'login' ? 'Log In' : 'Create Account')}
+              </button>
+
+              {msg && (
+                <div className={`submit-msg ${msg.type}`} style={{ display: 'block', marginTop: 14 }}>
+                  {msg.text}
+                </div>
+              )}
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <Link to="/">← Back to POTA Wiki</Link>
+      </footer>
+    </>
+  )
+}

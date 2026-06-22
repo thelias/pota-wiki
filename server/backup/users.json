@@ -1,0 +1,9 @@
+[
+  {
+    "id": 1,
+    "email": "elias@test.com",
+    "callsign": "KK7KKT",
+    "password_hash": "$2b$12$4IyBSYV89VFB8vcCJED7ee33T.0l8Vv15Y3ZOCb1anr.TBVogil6a",
+    "created_at": "2026-06-16T22:05:33.393Z"
+  }
+]

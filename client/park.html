@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Park — PNW POTA Wiki</title>
+  <style>
+    :root {
+      --green-dark:  #1e3a1e;
+      --green-mid:   #2d5a27;
+      --green-light: #4a7c3f;
+      --green-muted: #e8f0e5;
+      --blue-sky:    #4a87c8;
+      --blue-light:  #deeaf7;
+      --tan:         #c8a96e;
+      --tan-light:   #f5efe3;
+      --text:        #1a1a1a;
+      --text-muted:  #5a5a5a;
+      --border:      #d0d8cc;
+      --white:       #ffffff;
+      --shadow:      0 2px 8px rgba(0,0,0,0.10);
+      --radius:      8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f2;
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Top nav ─────────────────────────────────────── */
+    .topnav { background: var(--green-dark); padding: 0 24px; }
+    .topnav-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 0; font-size: 0.88rem;
+    }
+    .topnav a { color: rgba(255,255,255,0.8); text-decoration: none; }
+    .topnav a:hover { color: var(--white); }
+    .topnav .sep { color: rgba(255,255,255,0.35); }
+    .topnav .current { color: var(--white); font-weight: 600; }
+
+    /* ── Park header ─────────────────────────────────── */
+    .park-header {
+      background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 70%, var(--green-light) 100%);
+      color: var(--white);
+    }
+    .park-header-inner { max-width: 1100px; margin: 0 auto; padding: 28px 24px; }
+    .park-header-top { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .ref-badge {
+      font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.9rem; font-weight: 700;
+      background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 6px; padding: 4px 12px; white-space: nowrap;
+    }
+    .type-badge { font-size: 0.82rem; background: rgba(255,255,255,0.15); border-radius: 4px; padding: 4px 10px; }
+    #park-title { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; margin-bottom: 6px; }
+    #park-location { font-size: 0.95rem; opacity: 0.8; }
+    .header-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: var(--radius);
+      font-size: 0.88rem; font-weight: 600; text-decoration: none;
+      cursor: pointer; border: none; transition: opacity 0.12s, transform 0.1s;
+    }
+    .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-primary { background: var(--white); color: var(--green-dark); }
+    .btn-outline { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: var(--white); }
+
+    /* ── Page layout ─────────────────────────────────── */
+    .page-body {
+      max-width: 1100px; margin: 0 auto; padding: 28px 24px;
+      display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: start;
+    }
+    @media (max-width: 820px) {
+      .page-body { grid-template-columns: 1fr; }
+      .sidebar { order: -1; }
+    }
+
+    /* ── Card ────────────────────────────────────────── */
+    .card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; margin-bottom: 24px;
+    }
+    .card-header {
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-header h2 {
+      font-size: 1rem; font-weight: 700; color: var(--green-dark);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-body { padding: 20px; }
+
+    /* ── Info grid ───────────────────────────────────── */
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+    .info-item label {
+      font-size: 0.73rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--text-muted); display: block; margin-bottom: 4px;
+    }
+    .info-item .val { font-size: 0.92rem; font-weight: 500; word-break: break-word; }
+    .info-item .val a { color: var(--green-mid); text-decoration: none; }
+    .info-item .val a:hover { text-decoration: underline; }
+    .mono { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.85rem; }
+    .info-notes {
+      grid-column: 1 / -1; padding-top: 14px;
+      border-top: 1px solid var(--border); margin-top: 4px;
+    }
+    .info-notes label {
+      font-size: 0.73rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--text-muted); display: block; margin-bottom: 6px;
+    }
+    .info-notes .val { font-size: 0.9rem; line-height: 1.7; color: var(--text); }
+
+    /* ── Map ─────────────────────────────────────────── */
+    #map-frame { width: 100%; height: 300px; border: none; display: block; }
+    .map-placeholder {
+      width: 100%; height: 300px; background: var(--green-muted);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.88rem; color: var(--text-muted);
+    }
+
+    /* ── Skeletons ───────────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
+      background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 4px;
+    }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+    .skel-line { height: 15px; margin: 5px 0; }
+    .skel-short { width: 40%; } .skel-med { width: 65%; } .skel-long { width: 90%; }
+
+    /* ── Spinner ─────────────────────────────────────── */
+    .spinner-sm {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2px solid var(--border); border-top-color: var(--green-mid);
+      border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Reports list ────────────────────────────────── */
+    .report-item {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px 18px; margin-bottom: 12px; background: #fbfcfa;
+    }
+    .report-item:last-child { margin-bottom: 0; }
+    .report-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 12px; gap: 12px; flex-wrap: wrap;
+    }
+    .report-callsign {
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      font-weight: 700; font-size: 1.05rem; color: var(--blue-sky);
+    }
+    .report-date { font-size: 0.8rem; color: var(--text-muted); }
+    .report-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .rf-item label {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--text-muted); display: block; margin-bottom: 2px;
+    }
+    .rf-item .rfval { font-size: 0.88rem; font-weight: 500; }
+    .bool-yes { color: #27ae60; font-weight: 700; }
+    .bool-no  { color: #c0392b; font-weight: 700; }
+    .bool-unknown { color: var(--text-muted); }
+    .qrm-badge {
+      display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+    }
+    .qrm-very-low  { background: #d5f5e3; color: #1e8449; }
+    .qrm-low       { background: #eafaf1; color: #27ae60; }
+    .qrm-normal    { background: #fef9e7; color: #b7950b; }
+    .qrm-high      { background: #fdebd0; color: #ca6f1e; }
+    .qrm-very-high { background: #fadbd8; color: #c0392b; }
+    .report-text-field { font-size: 0.88rem; line-height: 1.65; margin-bottom: 8px; color: var(--text); }
+    .report-text-field:last-child { margin-bottom: 0; }
+    .report-text-label { font-size: 0.73rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 3px; }
+    .report-photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .report-photo {
+      width: 90px; height: 70px; object-fit: cover;
+      border-radius: 6px; border: 1px solid var(--border); cursor: pointer;
+    }
+    .report-delete {
+      font-size: 0.75rem; color: #999; background: none; border: none;
+      cursor: pointer; padding: 2px 6px; border-radius: 4px;
+    }
+    .report-delete:hover { background: #fdecea; color: #c0392b; }
+    .no-reports {
+      text-align: center; padding: 32px 20px; color: var(--text-muted); font-size: 0.9rem;
+      border: 2px dashed var(--border); border-radius: var(--radius); margin-bottom: 24px;
+    }
+    .api-error {
+      background: #fdecea; border: 1px solid #f5b7b1; border-radius: var(--radius);
+      padding: 12px 16px; font-size: 0.88rem; color: #c0392b; margin-bottom: 16px;
+    }
+
+    /* ── Form ────────────────────────────────────────── */
+    .form-section-title {
+      font-size: 1rem; font-weight: 700; color: var(--green-dark);
+      margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+    }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    @media (max-width: 560px) { .form-grid, .form-grid-3 { grid-template-columns: 1fr; } }
+    .form-row { margin-bottom: 16px; }
+    .form-row label {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 6px;
+    }
+    .req { color: #c0392b; }
+    .form-row input[type="text"],
+    .form-row input[type="date"],
+    .form-row select,
+    .form-row textarea {
+      width: 100%; padding: 9px 12px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 0.92rem; font-family: inherit; outline: none; background: var(--white);
+      transition: border-color 0.15s;
+    }
+    .form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color: var(--green-mid); }
+    .form-row textarea { min-height: 80px; resize: vertical; line-height: 1.5; }
+
+    /* Bool toggles */
+    .bool-group { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .bool-opt { flex: 1; }
+    .bool-opt input[type="radio"] { display: none; }
+    .bool-opt label {
+      display: block; text-align: center; padding: 9px 4px;
+      font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      border-right: 1px solid var(--border); transition: background 0.1s;
+      text-transform: none; letter-spacing: 0; color: var(--text-muted); margin: 0;
+    }
+    .bool-opt:last-child label { border-right: none; }
+    .bool-opt input:checked + label { color: var(--white); }
+    .bool-opt.yes input:checked + label { background: #27ae60; }
+    .bool-opt.no  input:checked + label { background: #c0392b; }
+    .bool-opt.unk input:checked + label { background: var(--text-muted); }
+
+    /* Photo upload */
+    .photo-upload-area {
+      border: 2px dashed var(--border); border-radius: var(--radius);
+      padding: 20px; text-align: center; cursor: pointer;
+      transition: border-color 0.15s, background 0.15s; position: relative;
+    }
+    .photo-upload-area:hover { border-color: var(--green-mid); background: var(--green-muted); }
+    .photo-upload-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+    .photo-upload-label { font-size: 0.88rem; color: var(--text-muted); pointer-events: none; }
+    .photo-preview-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .preview-thumb { position: relative; width: 80px; height: 64px; }
+    .preview-thumb img { width: 80px; height: 64px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+    .preview-thumb button {
+      position: absolute; top: -6px; right: -6px;
+      background: #c0392b; color: var(--white); border: none;
+      border-radius: 50%; width: 18px; height: 18px; font-size: 11px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+
+    .btn-submit {
+      background: var(--green-mid); color: var(--white); border: none;
+      border-radius: var(--radius); padding: 10px 24px;
+      font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.15s;
+    }
+    .btn-submit:hover:not(:disabled) { background: var(--green-dark); }
+    .btn-submit:disabled { opacity: 0.5; cursor: default; }
+    .form-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+    .submit-msg { font-size: 0.88rem; font-weight: 600; }
+    .submit-msg.success { color: var(--green-mid); }
+    .submit-msg.error   { color: #c0392b; }
+
+    .field-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+    /* ── Lightbox ────────────────────────────────────── */
+    #lightbox {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.85); align-items: center; justify-content: center;
+    }
+    #lightbox.open { display: flex; }
+    #lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; }
+    #lightbox-close {
+      position: absolute; top: 20px; right: 24px; color: var(--white);
+      font-size: 2rem; cursor: pointer; background: none; border: none;
+    }
+
+    /* ── Footer ──────────────────────────────────────── */
+    footer {
+      text-align: center; padding: 32px 24px; font-size: 0.82rem;
+      color: var(--text-muted); border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--green-mid); }
+  </style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <a href="index.html">🌲 PNW POTA Wiki</a>
+    <span class="sep">›</span>
+    <span class="current" id="nav-crumb">Loading…</span>
+    <span style="flex:1"></span>
+    <span id="nav-user"></span>
+  </div>
+</nav>
+
+<div class="park-header">
+  <div class="park-header-inner">
+    <div class="park-header-top">
+      <span class="ref-badge" id="hdr-ref">…</span>
+    </div>
+    <div id="park-title">Loading park…</div>
+    <div id="park-location"></div>
+    <div class="header-actions">
+      <a id="pota-link" href="#" target="_blank" class="btn btn-primary">🔗 View on POTA.app</a>
+      <a id="map-link" href="#" target="_blank" class="btn btn-outline">🗺 Open in Maps</a>
+    </div>
+  </div>
+</div>
+
+<div class="page-body">
+
+  <!-- ── Main column ────────────────────────────────── -->
+  <div class="main-col">
+
+    <!-- Park Details -->
+    <div class="card">
+      <div class="card-header"><h2>🏕 Park Details</h2></div>
+      <div class="card-body">
+        <div id="info-grid" class="info-grid">
+          <div class="info-item"><label>Reference</label><div class="val skeleton skel-line skel-med"></div></div>
+          <div class="info-item"><label>State</label><div class="val skeleton skel-line skel-med"></div></div>
+          <div class="info-item"><label>Grid</label><div class="val skeleton skel-line skel-short"></div></div>
+          <div class="info-item"><label>Coordinates</label><div class="val skeleton skel-line skel-long"></div></div>
+          <div class="info-item"><label>Agency</label><div class="val skeleton skel-line skel-med"></div></div>
+          <div class="info-item"><label>First Activation</label><div class="val skeleton skel-line skel-short"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activation Reports -->
+    <div class="card">
+      <div class="card-header">
+        <h2>📻 Activation Reports</h2>
+        <span id="report-count-badge" style="font-size:0.8rem;color:var(--text-muted)"></span>
+      </div>
+      <div class="card-body">
+        <div id="report-list-wrap">
+          <div style="text-align:center;padding:24px;color:var(--text-muted)">
+            <span class="spinner-sm"></span> Loading reports…
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit Activation Report -->
+    <div class="card">
+      <div class="card-header">
+        <h2>✏️ Submit an Activation Report</h2>
+      </div>
+      <div class="card-body">
+
+        <!-- Shown when not logged in -->
+        <div id="login-prompt" style="display:none;text-align:center;padding:24px;border:2px dashed var(--border);border-radius:var(--radius);color:var(--text-muted)">
+          <a href="#" id="login-prompt-link" style="color:var(--green-mid);font-weight:600">Log in</a> or
+          <a href="#" id="signup-prompt-link" style="color:var(--green-mid);font-weight:600">sign up</a>
+          to submit an activation report.
+        </div>
+
+        <!-- Callsign (readonly, prefilled from account) -->
+        <div id="callsign-row" class="form-grid" style="display:none">
+          <div class="form-row">
+            <label>Callsign</label>
+            <input type="text" id="f-callsign" readonly
+              style="background:#f4f6f2;color:var(--text-muted);cursor:default;font-family:'SF Mono',Menlo,Consolas,monospace;font-weight:700" />
+          </div>
+          <div class="form-row">
+            <label>Date of Activation</label>
+            <input type="date" id="f-date" />
+          </div>
+        </div>
+
+        <!-- Rest of form (hidden when logged out) -->
+        <div id="form-body" style="display:none">
+
+          <div class="form-grid form-grid-3">
+            <div class="form-row">
+              <label>Cell Service</label>
+              <div class="bool-group">
+                <div class="bool-opt yes"><input type="radio" name="cell" id="cell-yes" value="yes"><label for="cell-yes">✓ Yes</label></div>
+                <div class="bool-opt no"><input type="radio" name="cell" id="cell-no" value="no"><label for="cell-no">✗ No</label></div>
+                <div class="bool-opt unk"><input type="radio" name="cell" id="cell-unk" value="unknown" checked><label for="cell-unk">? N/A</label></div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>Bathrooms</label>
+              <div class="bool-group">
+                <div class="bool-opt yes"><input type="radio" name="bath" id="bath-yes" value="yes"><label for="bath-yes">✓ Yes</label></div>
+                <div class="bool-opt no"><input type="radio" name="bath" id="bath-no" value="no"><label for="bath-no">✗ No</label></div>
+                <div class="bool-opt unk"><input type="radio" name="bath" id="bath-unk" value="unknown" checked><label for="bath-unk">? N/A</label></div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>QRM Level</label>
+              <select id="f-qrm">
+                <option value="">— not rated —</option>
+                <option value="very-low">🟢 Very Low</option>
+                <option value="low">🟡 Low</option>
+                <option value="normal">🟠 Normal</option>
+                <option value="high">🔴 High</option>
+                <option value="very-high">🔴🔴 Very High</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>Parking <span class="field-hint">(optional)</span></label>
+            <textarea id="f-parking" placeholder="e.g. Free day-use lot 50ft from picnic area. Fills up on summer weekends by 10am."></textarea>
+          </div>
+          <div class="form-row">
+            <label>Setup Locations <span class="field-hint">(optional)</span></label>
+            <textarea id="f-setup" placeholder="e.g. Picnic shelter on the south side works great for a 40m linked dipole. Trees on the east trail for an inverted-V."></textarea>
+          </div>
+          <div class="form-row">
+            <label>General Comments <span class="field-hint">(optional)</span></label>
+            <textarea id="f-comments" placeholder="e.g. Ranger was friendly and curious. Bring bug spray in July."></textarea>
+          </div>
+          <div class="form-row">
+            <label>Photos <span class="field-hint">(optional — up to 4, max 8 MB each)</span></label>
+            <div class="photo-upload-area">
+              <input type="file" id="f-photos" accept="image/*" multiple />
+              <div class="photo-upload-label">📷 Click to add photos (JPG, PNG, WEBP)</div>
+            </div>
+            <div class="photo-preview-row" id="photo-previews"></div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-submit" id="submit-btn" onclick="submitReport()">Save Report</button>
+            <span class="submit-msg" id="submit-msg" style="display:none"></span>
+          </div>
+
+        </div><!-- /form-body -->
+
+      </div>
+    </div>
+
+  </div><!-- /main-col -->
+
+  <!-- ── Sidebar ─────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="card">
+      <div class="card-header"><h2>🗺 Map</h2></div>
+      <div style="overflow:hidden;border-radius:0 0 var(--radius) var(--radius)">
+        <div id="map-container"><div class="map-placeholder">Loading map…</div></div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox">
+  <button id="lightbox-close" onclick="closeLightbox()">×</button>
+  <img id="lightbox-img" src="" alt="Photo" />
+</div>
+
+<footer>
+  <a href="index.html">← Back to PNW POTA Wiki</a> ·
+  Data from <a href="https://pota.app" target="_blank">Parks on the Air®</a>
+</footer>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const REF = (params.get('ref') || '').toUpperCase().trim();
+
+  let currentUser = null;
+  let pendingFiles = [];
+
+  // ── Boot ─────────────────────────────────────────────
+  if (!REF) {
+    document.getElementById('park-title').textContent = 'No park specified.';
+  } else {
+    document.getElementById('nav-crumb').textContent = REF;
+    document.getElementById('hdr-ref').textContent = REF;
+    document.title = `${REF} — PNW POTA Wiki`;
+    document.getElementById('f-date').value = today();
+    loadAuth();
+    loadPark();
+    loadReports();
+  }
+
+  // ── Auth ──────────────────────────────────────────────
+  async function loadAuth() {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        currentUser = await res.json();
+        renderNavUser(currentUser);
+        renderAuthForm();
+      } else {
+        renderNavUser(null);
+        renderAuthForm();
+      }
+    } catch {
+      renderNavUser(null);
+      renderAuthForm();
+    }
+  }
+
+  function renderNavUser(user) {
+    const el = document.getElementById('nav-user');
+    if (user) {
+      el.innerHTML = `
+        <span style="color:rgba(255,255,255,0.9);font-weight:600">${esc(user.callsign)}</span>
+        <span style="color:rgba(255,255,255,0.4);margin:0 6px">·</span>
+        <a href="#" onclick="logout(event)" style="color:rgba(255,255,255,0.7);font-size:0.85rem">Log out</a>`;
+    } else {
+      el.innerHTML = `
+        <a href="auth.html?return=${encodeURIComponent(location.href)}" style="color:rgba(255,255,255,0.8);font-size:0.85rem">Log in</a>
+        <span style="color:rgba(255,255,255,0.4);margin:0 6px">·</span>
+        <a href="auth.html?tab=signup&return=${encodeURIComponent(location.href)}" style="color:rgba(255,255,255,0.8);font-size:0.85rem">Sign up</a>`;
+    }
+  }
+
+  function renderAuthForm() {
+    const callsignRow = document.getElementById('callsign-row');
+    const formBody    = document.getElementById('form-body');
+    const loginPrompt = document.getElementById('login-prompt');
+
+    if (currentUser) {
+      // Prefill callsign as readonly
+      document.getElementById('f-callsign').value = currentUser.callsign;
+      callsignRow.style.display = '';
+      formBody.style.display    = '';
+      loginPrompt.style.display = 'none';
+    } else {
+      callsignRow.style.display = 'none';
+      formBody.style.display    = 'none';
+      loginPrompt.style.display = '';
+    }
+  }
+
+  async function logout(e) {
+    e.preventDefault();
+    await fetch('/api/auth/logout', { method: 'POST' });
+    currentUser = null;
+    renderNavUser(null);
+    renderAuthForm();
+    loadReports(); // re-render to hide delete buttons
+  }
+
+  // Wire auth prompt links (REF may be in URL)
+  const returnHere = encodeURIComponent(location.href);
+  document.getElementById('login-prompt-link').href  = `auth.html?return=${returnHere}`;
+  document.getElementById('signup-prompt-link').href = `auth.html?tab=signup&return=${returnHere}`;
+
+  // ── Load park from API ────────────────────────────────
+  async function loadPark() {
+    try {
+      const res = await fetch(`/api/parks/${REF}`);
+      if (!res.ok) throw new Error(`${res.status}`);
+      renderPark(await res.json());
+    } catch (err) {
+      document.getElementById('park-title').textContent = REF;
+      document.getElementById('info-grid').innerHTML =
+        `<div class="api-error">Could not load park data (${err.message}). Make sure the API server is running.</div>`;
+    }
+  }
+
+  function renderPark(p) {
+    document.title = `${p.name} (${p.reference}) — PNW POTA Wiki`;
+    document.getElementById('park-title').textContent = p.name;
+    document.getElementById('hdr-ref').textContent = p.reference;
+    document.getElementById('nav-crumb').textContent = p.name || p.reference;
+    document.getElementById('park-location').textContent = p.location_name || p.location_desc || '';
+
+    document.getElementById('pota-link').href = `https://pota.app/#/park/${p.reference}`;
+    if (p.latitude && p.longitude) {
+      document.getElementById('map-link').href =
+        `https://maps.google.com/?q=${p.latitude},${p.longitude}`;
+    }
+
+    // Info grid
+    const rows = [];
+    rows.push(ii('Reference', `<span class="mono">${esc(p.reference)}</span>`));
+    rows.push(ii('State', esc(p.location_name || p.location_desc || '—')));
+    rows.push(ii('Park Type', esc(p.park_type || '—')));
+    rows.push(ii('Grid Square', `<span class="mono">${esc(p.grid6 || p.grid4 || '—')}</span>`));
+    if (p.latitude && p.longitude)
+      rows.push(ii('Coordinates', `${(+p.latitude).toFixed(5)}, ${(+p.longitude).toFixed(5)}`));
+    if (p.agencies)
+      rows.push(ii('Agency', esc(p.agencies)));
+    if (p.access_methods)
+      rows.push(ii('Access', esc(p.access_methods)));
+    rows.push(ii('Status', p.active
+      ? '<span style="color:#27ae60;font-weight:700">● Active</span>'
+      : '<span style="color:#c0392b;font-weight:700">● Inactive</span>'));
+    if (p.first_activator)
+      rows.push(ii('First Activation',
+        `<a href="https://pota.app/#/profile/${p.first_activator}" target="_blank">${esc(p.first_activator)}</a>` +
+        (p.first_activation_date ? ` · ${p.first_activation_date.slice(0, 10)}` : '')));
+    if (p.activations != null || p.attempts != null)
+      rows.push(ii('Stats',
+        `${p.activations ?? '—'} activations / ${p.attempts ?? '—'} attempts` +
+        (p.qsos != null ? ` (${p.qsos} QSOs)` : '')));
+    if (p.website)
+      rows.push(ii('Website', `<a href="${esc(p.website)}" target="_blank">${esc(p.website)}</a>`));
+
+    let html = rows.join('');
+
+    if (p.park_comments) {
+      html += `<div class="info-notes">
+        <label>Official POTA Notes</label>
+        <div class="val">${esc(p.park_comments)}</div>
+      </div>`;
+    }
+
+    document.getElementById('info-grid').innerHTML = html;
+
+    // Map
+    if (p.latitude && p.longitude) {
+      const lat = +p.latitude, lon = +p.longitude;
+      document.getElementById('map-container').innerHTML =
+        `<iframe id="map-frame"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.08},${lat-0.05},${lon+0.08},${lat+0.05}&layer=mapnik&marker=${lat},${lon}"
+          allowfullscreen loading="lazy"></iframe>`;
+    }
+  }
+
+  function ii(label, val) {
+    return `<div class="info-item"><label>${esc(label)}</label><div class="val">${val}</div></div>`;
+  }
+
+  // ── Load reports from API ─────────────────────────────
+  async function loadReports() {
+    const wrap = document.getElementById('report-list-wrap');
+    try {
+      const res = await fetch(`/api/parks/${REF}/reports`);
+      if (!res.ok) throw new Error(`${res.status}`);
+      const reports = await res.json();
+
+      const badge = document.getElementById('report-count-badge');
+      badge.textContent = reports.length
+        ? `${reports.length} report${reports.length !== 1 ? 's' : ''}`
+        : '';
+
+      if (!reports.length) {
+        wrap.innerHTML =
+          `<div class="no-reports">No activation reports yet — be the first to submit one below!</div>`;
+        return;
+      }
+      wrap.innerHTML = reports.map(reportHTML).join('');
+    } catch (err) {
+      wrap.innerHTML =
+        `<div class="api-error">Could not load reports (${err.message}). Make sure the API server is running.</div>`;
+    }
+  }
+
+  function reportHTML(r) {
+    const boolDisplay = v => {
+      if (v === 'yes') return '<span class="bool-yes">✓ Yes</span>';
+      if (v === 'no')  return '<span class="bool-no">✗ No</span>';
+      return '<span class="bool-unknown">—</span>';
+    };
+    const qrmLabel = {
+      'very-low':'Very Low','low':'Low','normal':'Normal','high':'High','very-high':'Very High'
+    };
+    const qrmClass = {
+      'very-low':'qrm-very-low','low':'qrm-low','normal':'qrm-normal',
+      'high':'qrm-high','very-high':'qrm-very-high'
+    };
+    const qrmHTML = r.qrm_level && qrmLabel[r.qrm_level]
+      ? `<span class="qrm-badge ${qrmClass[r.qrm_level]}">${qrmLabel[r.qrm_level]}</span>`
+      : '<span class="bool-unknown">—</span>';
+
+    const dateStr = r.activation_date ? r.activation_date.slice(0, 10) : '';
+
+    const photosHTML = r.photos?.length
+      ? `<div class="report-photos">${r.photos.map(ph =>
+          `<img class="report-photo"
+            src="/uploads/${esc(ph.filename)}"
+            alt="${esc(ph.original_name || 'photo')}"
+            onclick="openLightbox('/uploads/${esc(ph.filename)}')" />`
+        ).join('')}</div>`
+      : '';
+
+    const isOwn = currentUser && r.user_id === currentUser.id;
+    return `<div class="report-item" id="report-${r.id}">
+      <div class="report-header">
+        <span class="report-callsign">${esc(r.callsign)}</span>
+        <span style="display:flex;gap:10px;align-items:center">
+          <span class="report-date">${dateStr}</span>
+          ${isOwn ? `<button class="report-delete" onclick="deleteReport(${r.id})">✕ Delete</button>` : ''}
+        </span>
+      </div>
+      <div class="report-fields">
+        <div class="rf-item"><label>Cell Service</label><div class="rfval">${boolDisplay(r.cell_service)}</div></div>
+        <div class="rf-item"><label>Bathrooms</label><div class="rfval">${boolDisplay(r.bathrooms)}</div></div>
+        <div class="rf-item"><label>QRM Level</label><div class="rfval">${qrmHTML}</div></div>
+      </div>
+      ${r.parking ? `<div class="report-text-field"><div class="report-text-label">Parking</div>${esc(r.parking)}</div>` : ''}
+      ${r.setup_locations ? `<div class="report-text-field"><div class="report-text-label">Setup Locations</div>${esc(r.setup_locations)}</div>` : ''}
+      ${r.general_comments ? `<div class="report-text-field"><div class="report-text-label">General Comments</div>${esc(r.general_comments)}</div>` : ''}
+      ${photosHTML}
+    </div>`;
+  }
+
+  // ── Delete report ─────────────────────────────────────
+  async function deleteReport(id) {
+    if (!confirm('Delete this report?')) return;
+    try {
+      const res = await fetch(`/api/reports/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`${res.status}`);
+      document.getElementById(`report-${id}`)?.remove();
+      loadReports(); // refresh count badge
+    } catch (err) {
+      alert(`Could not delete report: ${err.message}`);
+    }
+  }
+
+  // ── Submit report ─────────────────────────────────────
+  async function submitReport() {
+    if (!currentUser) {
+      window.location.href = `auth.html?return=${encodeURIComponent(location.href)}`;
+      return;
+    }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    hideSubmitMsg();
+
+    try {
+      const formData = new FormData();
+      formData.append('activation_date',  document.getElementById('f-date').value);
+      formData.append('cell_service',     document.querySelector('input[name="cell"]:checked')?.value || '');
+      formData.append('bathrooms',        document.querySelector('input[name="bath"]:checked')?.value || '');
+      formData.append('qrm_level',        document.getElementById('f-qrm').value);
+      formData.append('parking',          document.getElementById('f-parking').value.trim());
+      formData.append('setup_locations',  document.getElementById('f-setup').value.trim());
+      formData.append('general_comments', document.getElementById('f-comments').value.trim());
+
+      pendingFiles.forEach(file => formData.append('photos', file));
+
+      const res = await fetch(`/api/parks/${REF}/reports`, { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+
+      // Reset form (leave callsign — it's readonly and tied to the account)
+      document.getElementById('f-date').value = today();
+      document.getElementById('f-qrm').value = '';
+      ['f-parking','f-setup','f-comments'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('f-photos').value = '';
+      document.querySelectorAll('input[name="cell"]').forEach(r => r.checked = r.value === 'unknown');
+      document.querySelectorAll('input[name="bath"]').forEach(r => r.checked = r.value === 'unknown');
+      pendingFiles = [];
+      document.getElementById('photo-previews').innerHTML = '';
+
+      showSubmitMsg('✓ Report saved!', 'success');
+      loadReports();
+      document.getElementById('report-list-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (err) {
+      showSubmitMsg(`Error: ${err.message}`, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save Report';
+    }
+  }
+
+  function showSubmitMsg(text, type) {
+    const el = document.getElementById('submit-msg');
+    el.textContent = text;
+    el.className = `submit-msg ${type}`;
+    el.style.display = 'inline';
+    if (type === 'success') setTimeout(hideSubmitMsg, 4000);
+  }
+  function hideSubmitMsg() {
+    document.getElementById('submit-msg').style.display = 'none';
+  }
+
+  // ── Photo file picker ─────────────────────────────────
+  document.getElementById('f-photos').addEventListener('change', function () {
+    const slots = 4 - pendingFiles.length;
+    const added = Array.from(this.files).slice(0, slots);
+    pendingFiles.push(...added);
+    renderPreviews();
+    this.value = '';
+  });
+
+  function renderPreviews() {
+    document.getElementById('photo-previews').innerHTML = pendingFiles.map((file, i) => {
+      const url = URL.createObjectURL(file);
+      return `<div class="preview-thumb">
+        <img src="${url}" alt="Preview ${i+1}" />
+        <button type="button" onclick="removePhoto(${i})">×</button>
+      </div>`;
+    }).join('');
+  }
+
+  function removePhoto(i) {
+    pendingFiles.splice(i, 1);
+    renderPreviews();
+  }
+
+  // ── Lightbox ──────────────────────────────────────────
+  function openLightbox(src) {
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').classList.add('open');
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.getElementById('lightbox-img').src = '';
+  }
+  document.getElementById('lightbox').addEventListener('click', e => {
+    if (e.target === document.getElementById('lightbox')) closeLightbox();
+  });
+
+  // ── Utilities ─────────────────────────────────────────
+  function today() { return new Date().toISOString().split('T')[0]; }
+  function esc(s) {
+    return String(s || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>

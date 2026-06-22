@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — PNW POTA Wiki</title>
+  <style>
+    :root {
+      --green-dark:  #1e3a1e;
+      --green-mid:   #2d5a27;
+      --green-light: #4a7c3f;
+      --green-muted: #e8f0e5;
+      --text:        #1a1a1a;
+      --text-muted:  #5a5a5a;
+      --border:      #d0d8cc;
+      --white:       #ffffff;
+      --radius:      8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f2; color: var(--text); min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+
+    .topnav { background: var(--green-dark); padding: 0 24px; }
+    .topnav-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 0; font-size: 0.88rem;
+    }
+    .topnav a { color: rgba(255,255,255,0.8); text-decoration: none; }
+    .topnav a:hover { color: var(--white); }
+    .topnav .sep { color: rgba(255,255,255,0.35); }
+    .topnav .current { color: var(--white); font-weight: 600; }
+
+    .page {
+      flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 24px;
+    }
+
+    .card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); width: 100%; max-width: 420px;
+      overflow: hidden;
+    }
+
+    .tabs {
+      display: flex; border-bottom: 1px solid var(--border);
+    }
+    .tab-btn {
+      flex: 1; padding: 14px; font-size: 0.95rem; font-weight: 600;
+      background: none; border: none; cursor: pointer; color: var(--text-muted);
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: color 0.15s;
+    }
+    .tab-btn.active { color: var(--green-mid); border-bottom-color: var(--green-mid); }
+
+    .tab-panel { display: none; padding: 28px; }
+    .tab-panel.active { display: block; }
+
+    .form-row { margin-bottom: 18px; }
+    .form-row label {
+      display: block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 6px;
+    }
+    .form-row input {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: var(--radius); font-size: 0.95rem; font-family: inherit;
+      outline: none; transition: border-color 0.15s;
+    }
+    .form-row input:focus { border-color: var(--green-mid); }
+    .field-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 5px; }
+
+    .btn-submit {
+      width: 100%; padding: 11px; background: var(--green-mid); color: var(--white);
+      border: none; border-radius: var(--radius); font-size: 0.95rem; font-weight: 700;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .btn-submit:hover:not(:disabled) { background: var(--green-dark); }
+    .btn-submit:disabled { opacity: 0.5; cursor: default; }
+
+    .msg {
+      margin-top: 14px; padding: 10px 14px; border-radius: var(--radius);
+      font-size: 0.88rem; font-weight: 600; display: none;
+    }
+    .msg.error   { background: #fdecea; color: #c0392b; border: 1px solid #f5b7b1; }
+    .msg.success { background: #eafaf1; color: #1e8449; border: 1px solid #a9dfbf; }
+
+    footer {
+      text-align: center; padding: 24px; font-size: 0.82rem; color: var(--text-muted);
+    }
+    footer a { color: var(--green-mid); }
+  </style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <a href="index.html">🌲 PNW POTA Wiki</a>
+    <span class="sep">›</span>
+    <span class="current" id="nav-label">Sign In</span>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="card">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showTab('login')">Log In</button>
+      <button class="tab-btn" onclick="showTab('signup')">Sign Up</button>
+    </div>
+
+    <!-- Log in -->
+    <div class="tab-panel active" id="panel-login">
+      <div class="form-row">
+        <label>Callsign</label>
+        <input type="text" id="login-callsign" placeholder="W7ABC" autocapitalize="characters" maxlength="14" />
+      </div>
+      <div class="form-row">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" />
+      </div>
+      <button class="btn-submit" id="login-btn" onclick="login()">Log In</button>
+      <div class="msg" id="login-msg"></div>
+    </div>
+
+    <!-- Sign up -->
+    <div class="tab-panel" id="panel-signup">
+      <div class="form-row">
+        <label>Callsign</label>
+        <input type="text" id="signup-callsign" placeholder="W7ABC" autocapitalize="characters" maxlength="14" />
+        <div class="field-hint">This will be your username.</div>
+      </div>
+      <div class="form-row">
+        <label>Email</label>
+        <input type="email" id="signup-email" placeholder="you@example.com" />
+        <div class="field-hint">Only used for password reset. Never shared.</div>
+      </div>
+      <div class="form-row">
+        <label>Password</label>
+        <input type="password" id="signup-password" placeholder="Min. 8 characters" />
+      </div>
+      <button class="btn-submit" id="signup-btn" onclick="signup()">Create Account</button>
+      <div class="msg" id="signup-msg"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <a href="index.html">← Back to PNW POTA Wiki</a>
+</footer>
+
+<script>
+  // If already logged in, redirect
+  fetch('/api/auth/me').then(r => {
+    if (r.ok) window.location.replace(returnUrl())
+  })
+
+  // Honour ?tab=signup in URL
+  const urlParams = new URLSearchParams(window.location.search)
+  if (urlParams.get('tab') === 'signup') showTab('signup')
+
+  function returnUrl() {
+    return urlParams.get('return') || 'index.html'
+  }
+
+  function showTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach((b, i) =>
+      b.classList.toggle('active', (i === 0) === (tab === 'login'))
+    )
+    document.getElementById('panel-login').classList.toggle('active', tab === 'login')
+    document.getElementById('panel-signup').classList.toggle('active', tab === 'signup')
+    document.getElementById('nav-label').textContent = tab === 'login' ? 'Log In' : 'Sign Up'
+  }
+
+  async function login() {
+    const callsign = document.getElementById('login-callsign').value.trim()
+    const password = document.getElementById('login-password').value
+    const btn = document.getElementById('login-btn')
+    const msg = document.getElementById('login-msg')
+
+    if (!callsign || !password) return showMsg(msg, 'Callsign and password are required.', 'error')
+
+    btn.disabled = true; btn.textContent = 'Logging in…'
+    msg.style.display = 'none'
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callsign, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) return showMsg(msg, data.error, 'error')
+      window.location.replace(returnUrl())
+    } catch {
+      showMsg(msg, 'Network error. Try again.', 'error')
+    } finally {
+      btn.disabled = false; btn.textContent = 'Log In'
+    }
+  }
+
+  async function signup() {
+    const callsign = document.getElementById('signup-callsign').value.trim()
+    const email    = document.getElementById('signup-email').value.trim()
+    const password = document.getElementById('signup-password').value
+    const btn = document.getElementById('signup-btn')
+    const msg = document.getElementById('signup-msg')
+
+    if (!callsign || !email || !password) return showMsg(msg, 'All fields are required.', 'error')
+    if (password.length < 8) return showMsg(msg, 'Password must be at least 8 characters.', 'error')
+
+    btn.disabled = true; btn.textContent = 'Creating account…'
+    msg.style.display = 'none'
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callsign, email, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) return showMsg(msg, data.error, 'error')
+      window.location.replace(returnUrl())
+    } catch {
+      showMsg(msg, 'Network error. Try again.', 'error')
+    } finally {
+      btn.disabled = false; btn.textContent = 'Create Account'
+    }
+  }
+
+  function showMsg(el, text, type) {
+    el.textContent = text
+    el.className = `msg ${type}`
+    el.style.display = 'block'
+  }
+
+  // Enter key submits
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return
+    const loginActive = document.getElementById('panel-login').classList.contains('active')
+    if (loginActive) login(); else signup()
+  })
+</script>
+</body>
+</html>

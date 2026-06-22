@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "park_reference": "US-13389",
+    "callsign": "KK7KKT",
+    "activation_date": "2026-06-16T07:00:00.000Z",
+    "cell_service": "yes",
+    "bathrooms": "yes",
+    "qrm_level": "very-high",
+    "parking": "Tiny parking area with very little room. Do not recomend doing this at any peak times during the day.",
+    "setup_locations": "Only spot to setup is tony parking lot",
+    "general_comments": "This is a tiny lake with a ton of houses and a ton of QRM. I think a free standing small foot print antenna is the only choice here. Prepare your filters too. This place is hard on your ears.",
+    "created_at": "2026-06-16T21:49:35.586Z",
+    "updated_at": "2026-06-16T21:49:35.586Z",
+    "user_id": null
+  }
+]

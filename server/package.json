@@ -1,0 +1,27 @@
+{
+  "name": "pnw-pota-wiki-server",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "API server for the PNW POTA Wiki",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "seed": "node src/db/seed.js",
+    "db:export": "node src/db/backup.js export",
+    "db:restore": "node src/db/backup.js restore",
+    "dummy": "node src/db/dummy.js",
+    "dummy:wipe": "node src/db/dummy.js --wipe"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.12.0"
+  }
+}
