@@ -651,7 +651,7 @@ function ReportItem({ report: r, user, onDelete, deletingId, onLightbox, onEdit,
           <div className="report-callsign">{r.callsign}</div>
           {r.activation_date && (
             <div className="report-date">
-              {new Date(r.activation_date.replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              {new Date(r.activation_date.slice(0, 10).replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             </div>
           )}
         </div>
