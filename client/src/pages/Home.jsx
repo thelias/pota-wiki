@@ -185,7 +185,7 @@ export default function Home() {
       </div>
 
       <footer>
-        Data from <a href="https://pota.app" target="_blank" rel="noreferrer">Parks on the Air®</a>
+        Park data from <a href="https://pota.app" target="_blank" rel="noreferrer">Parks on the Air®</a>
       </footer>
     </>
   )

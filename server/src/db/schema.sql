@@ -69,17 +69,22 @@ ALTER TABLE activation_reports ADD COLUMN IF NOT EXISTS cell_provider TEXT;
 ALTER TABLE activation_reports ADD COLUMN IF NOT EXISTS antenna       TEXT;
 ALTER TABLE activation_reports ADD COLUMN IF NOT EXISTS mode          TEXT[];
 ALTER TABLE activation_reports ADD COLUMN IF NOT EXISTS power_watts   INTEGER;
+ALTER TABLE activation_reports ADD COLUMN IF NOT EXISTS bands         TEXT[];
 
 -- Photos attached to reports
 CREATE TABLE IF NOT EXISTS report_photos (
   id            SERIAL      PRIMARY KEY,
   report_id     INTEGER     NOT NULL REFERENCES activation_reports(id) ON DELETE CASCADE,
-  filename      TEXT        NOT NULL,   -- stored filename on disk
+  filename      TEXT        NOT NULL,   -- S3 object key (e.g. photos/uuid.jpg)
+  url           TEXT,                   -- full public S3/CDN URL
   original_name TEXT,
   mime_type     TEXT,
   size_bytes    INTEGER,
   uploaded_at   TIMESTAMPTZ DEFAULT now()
 );
+
+-- Migration for existing installations
+ALTER TABLE report_photos ADD COLUMN IF NOT EXISTS url TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_reports_park     ON activation_reports(park_reference);
 CREATE INDEX IF NOT EXISTS idx_reports_date     ON activation_reports(activation_date DESC);

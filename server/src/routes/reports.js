@@ -7,11 +7,12 @@
  */
 
 import { Router } from 'express'
-import path from 'path'
-import fs from 'fs'
+import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import pool from '../db/pool.js'
 import { upload } from '../middleware/upload.js'
 import { requireAuth, optionalAuth } from '../middleware/auth.js'
+
+const s3 = new S3Client({ region: process.env.AWS_REGION })
 
 const router = Router({ mergeParams: true })
 
@@ -67,11 +68,10 @@ router.post('/', requireAuth, upload.array('photos', 4), async (req, res, next) 
       cell_provider, antenna, power_watts,
     } = req.body
 
-    // mode may arrive as a single string or array of strings from multipart form
-    const rawMode = req.body.mode
-    const mode = rawMode
-      ? (Array.isArray(rawMode) ? rawMode : [rawMode]).filter(Boolean)
-      : []
+    // mode and bands may arrive as single string or array from multipart form
+    const toArr = raw => raw ? (Array.isArray(raw) ? raw : [raw]).filter(Boolean) : []
+    const mode  = toArr(req.body.mode)
+    const bands = toArr(req.body.bands)
 
     // Callsign always comes from the authenticated user — not the request body
     const callsign = req.user.callsign
@@ -79,10 +79,12 @@ router.post('/', requireAuth, upload.array('photos', 4), async (req, res, next) 
     const VALID_BOOL  = ['yes', 'no', 'unknown', undefined, null, '']
     const VALID_QRM   = ['very-low', 'low', 'normal', 'high', 'very-high', undefined, null, '']
     const VALID_MODES = ['CW', 'FT4', 'FT8', 'SSB', 'DATA', 'PHONE', 'Other']
+    const VALID_BANDS = ['160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m', '1.25m', '70cm', '33cm', '23cm']
     if (!VALID_BOOL.includes(cell_service)) return res.status(400).json({ error: 'Invalid cell_service value' })
     if (!VALID_BOOL.includes(bathrooms))   return res.status(400).json({ error: 'Invalid bathrooms value' })
     if (!VALID_QRM.includes(qrm_level))    return res.status(400).json({ error: 'Invalid qrm_level value' })
-    if (mode.some(m => !VALID_MODES.includes(m))) return res.status(400).json({ error: 'Invalid mode value' })
+    if (mode.some(m => !VALID_MODES.includes(m)))  return res.status(400).json({ error: 'Invalid mode value' })
+    if (bands.some(b => !VALID_BANDS.includes(b))) return res.status(400).json({ error: 'Invalid band value' })
 
     const parsedPower = power_watts ? parseInt(power_watts, 10) : null
 
@@ -96,8 +98,8 @@ router.post('/', requireAuth, upload.array('photos', 4), async (req, res, next) 
     const { rows: [report] } = await client.query(
       `INSERT INTO activation_reports
          (park_reference, callsign, activation_date, cell_service, cell_provider, bathrooms,
-          qrm_level, parking, setup_locations, general_comments, antenna, mode, power_watts, user_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+          qrm_level, parking, setup_locations, general_comments, antenna, mode, power_watts, bands, user_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING *`,
       [
         ref,
@@ -111,8 +113,9 @@ router.post('/', requireAuth, upload.array('photos', 4), async (req, res, next) 
         setup_locations   || null,
         general_comments  || null,
         antenna           || null,
-        mode.length ? mode : null,
+        mode.length  ? mode  : null,
         parsedPower,
+        bands.length ? bands : null,
         req.user.userId,
       ]
     )
@@ -121,9 +124,9 @@ router.post('/', requireAuth, upload.array('photos', 4), async (req, res, next) 
     if (req.files?.length) {
       for (const file of req.files) {
         const { rows: [photo] } = await client.query(
-          `INSERT INTO report_photos (report_id, filename, original_name, mime_type, size_bytes)
-           VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-          [report.id, file.filename, file.originalname, file.mimetype, file.size]
+          `INSERT INTO report_photos (report_id, filename, url, original_name, mime_type, size_bytes)
+           VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+          [report.id, file.key, file.location, file.originalname, file.mimetype, file.size]
         )
         photos.push(photo)
       }
@@ -162,8 +165,13 @@ export const deleteReport = async (req, res, next) => {
 
     await pool.query('DELETE FROM activation_reports WHERE id = $1', [id])
 
-    const uploadsDir = process.env.UPLOADS_DIR || './uploads'
-    photos.forEach(p => fs.unlink(path.join(uploadsDir, p.filename), () => {}))
+    // Delete photos from S3 (filename stores the S3 key)
+    await Promise.allSettled(
+      photos.map(p => s3.send(new DeleteObjectCommand({
+        Bucket: process.env.S3_BUCKET,
+        Key: p.filename,
+      })))
+    )
 
     res.json({ deleted: id })
   } catch (err) {

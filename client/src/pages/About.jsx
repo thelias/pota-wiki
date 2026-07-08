@@ -37,15 +37,10 @@ export default function About() {
           {/* Who built it, how to get in touch, acknowledgements */}
         </Section>
 
-        <div style={{ marginTop: 48, paddingTop: 24, borderTop: '1px solid var(--border)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          Data sourced from <a href="https://pota.app" target="_blank" rel="noreferrer" style={{ color: 'var(--green-mid)' }}>Parks on the Air®</a>.
-          {' · '}
-          <Link to="/" style={{ color: 'var(--green-mid)' }}>← Back to parks</Link>
-        </div>
       </div>
 
       <footer>
-        Data from <a href="https://pota.app" target="_blank" rel="noreferrer">Parks on the Air®</a>
+        Park data from <a href="https://pota.app" target="_blank" rel="noreferrer">Parks on the Air®</a>
       </footer>
     </>
   )

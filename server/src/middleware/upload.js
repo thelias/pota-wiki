@@ -1,17 +1,22 @@
 import multer from 'multer'
+import multerS3 from 'multer-s3'
+import { S3Client } from '@aws-sdk/client-s3'
 import path from 'path'
 import { randomUUID } from 'crypto'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
 const MAX_SIZE_BYTES = 8 * 1024 * 1024 // 8 MB
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, process.env.UPLOADS_DIR || './uploads')
-  },
-  filename: (req, file, cb) => {
+export const s3 = new S3Client({ region: process.env.AWS_REGION })
+
+const storage = multerS3({
+  s3,
+  bucket: process.env.S3_BUCKET,
+  contentType: (req, file, cb) => cb(null, file.mimetype),
+  key: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase()
-    cb(null, `${randomUUID()}${ext}`)
+    const parkRef = (req.params.ref || 'unknown').toUpperCase()
+    cb(null, `activations/${parkRef}/${randomUUID()}${ext}`)
   },
 })
 

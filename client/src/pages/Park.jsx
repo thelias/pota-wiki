@@ -12,11 +12,73 @@ const QRM_LABELS = {
 }
 
 const MODES = ['CW', 'FT4', 'FT8', 'SSB', 'DATA', 'PHONE', 'Other']
+const BANDS = ['160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m', '1.25m', '70cm', '33cm', '23cm']
 
 const EMPTY_FORM = {
   activation_date: '', cell_service: 'unknown', bathrooms: 'unknown',
   qrm_level: 'normal', parking: '', setup_locations: '', general_comments: '',
-  cell_provider: '', antenna: '', mode: [], power_watts: '',
+  cell_provider: '', antenna: '', mode: [], bands: [], power_watts: '',
+}
+
+function MultiSelect({ options, value, onChange, placeholder }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+  const toggle = opt => onChange(value.includes(opt) ? value.filter(x => x !== opt) : [...value, opt])
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <div onClick={() => setOpen(o => !o)} style={{
+        border: '1px solid var(--border)', borderRadius: 6, padding: '6px 10px',
+        cursor: 'pointer', display: 'flex', flexWrap: 'wrap', gap: 4, minHeight: 38,
+        alignItems: 'center', background: 'var(--white)',
+      }}>
+        {value.length === 0
+          ? <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', flex: 1 }}>{placeholder}</span>
+          : value.map(v => (
+              <span key={v} style={{
+                background: 'var(--green-muted)', color: 'var(--green-mid)',
+                borderRadius: 3, padding: '1px 6px', fontSize: '0.8rem', fontWeight: 600,
+              }}>
+                {v}
+                <span onClick={e => { e.stopPropagation(); toggle(v) }}
+                  style={{ marginLeft: 5, cursor: 'pointer', opacity: 0.7 }}>×</span>
+              </span>
+            ))
+        }
+        <span style={{ marginLeft: 'auto', paddingLeft: 6, color: 'var(--text-muted)', fontSize: '0.75rem' }}>▾</span>
+      </div>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, zIndex: 50,
+          background: 'var(--white)', border: '1px solid var(--border)',
+          borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          maxHeight: 200, overflowY: 'auto',
+        }}>
+          {options.map(opt => (
+            <div key={opt} onClick={() => toggle(opt)} style={{
+              padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+              fontSize: '0.88rem', userSelect: 'none',
+              background: value.includes(opt) ? 'var(--green-muted)' : 'transparent',
+            }}>
+              <span style={{
+                width: 15, height: 15, border: `1px solid ${value.includes(opt) ? 'var(--green-mid)' : 'var(--border)'}`,
+                borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: value.includes(opt) ? 'var(--green-mid)' : 'transparent',
+                color: '#fff', fontSize: '0.65rem', flexShrink: 0,
+              }}>
+                {value.includes(opt) ? '✓' : ''}
+              </span>
+              {opt}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Park() {
@@ -82,10 +144,11 @@ export default function Park() {
 
     const fd = new FormData()
     Object.entries(form).forEach(([k, v]) => {
-      if (k === 'mode') return // handled below
+      if (k === 'mode' || k === 'bands') return // handled below
       fd.append(k, v)
     })
     form.mode.forEach(m => fd.append('mode', m))
+    form.bands.forEach(b => fd.append('bands', b))
     photos.forEach(f => fd.append('photos', f))
 
     try {
@@ -350,7 +413,7 @@ export default function Park() {
               </div>
             )}
             {(user || user === undefined) && (
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit} onKeyDown={e => { if (e.key === 'Enter') e.preventDefault() }}>
                 {/* Callsign (readonly) + Date */}
                 <div className="form-grid">
                   <div className="form-row">
@@ -388,30 +451,23 @@ export default function Park() {
                   </div>
                 </div>
 
-                {/* Mode + Power */}
+                {/* Mode + Bands + Power */}
                 <div className="form-grid" style={{ marginBottom: 16 }}>
                   <div className="form-row" style={{ marginBottom: 0 }}>
-                    <label>Mode <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8rem' }}>(select all that apply)</span></label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', paddingTop: 4 }}>
-                      {MODES.map(m => (
-                        <label key={m} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.88rem', cursor: 'pointer', userSelect: 'none' }}>
-                          <input type="checkbox" value={m}
-                            checked={form.mode.includes(m)}
-                            onChange={e => setForm(f => ({
-                              ...f,
-                              mode: e.target.checked ? [...f.mode, m] : f.mode.filter(x => x !== m)
-                            }))}
-                            style={{ accentColor: 'var(--green-mid)', width: 15, height: 15 }} />
-                          {m}
-                        </label>
-                      ))}
-                    </div>
+                    <label>Mode</label>
+                    <MultiSelect options={MODES} value={form.mode} placeholder="Select modes…"
+                      onChange={v => setForm(f => ({ ...f, mode: v }))} />
                   </div>
                   <div className="form-row" style={{ marginBottom: 0 }}>
-                    <label>Power (watts)</label>
-                    <input type="number" min="0" max="10000" placeholder="e.g. 10"
-                      value={form.power_watts} onChange={field('power_watts')} />
+                    <label>Bands Used</label>
+                    <MultiSelect options={BANDS} value={form.bands} placeholder="Select bands…"
+                      onChange={v => setForm(f => ({ ...f, bands: v }))} />
                   </div>
+                </div>
+                <div className="form-row" style={{ marginBottom: 16, maxWidth: 200 }}>
+                  <label>Power (watts)</label>
+                  <input style={{minWidth: 60}} type="number" min="0" max="10000" placeholder="e.g. 10"
+                    value={form.power_watts} onChange={field('power_watts')} />
                 </div>
 
                 {/* Text fields */}
@@ -473,9 +529,7 @@ export default function Park() {
       </div>
 
       <footer>
-        Data from <a href="https://pota.app" target="_blank" rel="noreferrer">Parks on the Air®</a>
-        {' · '}
-        <Link to="/">← All Parks</Link>
+        Park data from <a href="https://pota.app" target="_blank" rel="noreferrer">Parks on the Air®</a>
       </footer>
     </>
   )
@@ -537,6 +591,16 @@ function ReportItem({ report: r, user, onDelete, deletingId, onLightbox }) {
             </div>
           </div>
         )}
+        {r.bands?.length > 0 && (
+          <div className="rf-item">
+            <label>Bands</label>
+            <div className="rfval" style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {r.bands.map(b => (
+                <span key={b} style={{ fontFamily: 'SF Mono, Menlo, Consolas, monospace', fontSize: '0.78rem', fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: 'var(--green-muted)', color: 'var(--green-mid)', border: '1px solid var(--green-light)' }}>{b}</span>
+              ))}
+            </div>
+          </div>
+        )}
         {r.power_watts != null && (
           <div className="rf-item">
             <label>Power</label>
@@ -573,8 +637,8 @@ function ReportItem({ report: r, user, onDelete, deletingId, onLightbox }) {
       {r.photos?.length > 0 && (
         <div className="report-photos">
           {r.photos.map(p => (
-            <img key={p.id} src={`/uploads/${p.filename}`} alt={p.original_name || 'Photo'}
-              className="report-photo" onClick={() => onLightbox(`/uploads/${p.filename}`)} />
+            <img key={p.id} src={p.url} alt={p.original_name || 'Photo'}
+              className="report-photo" onClick={() => onLightbox(p.url)} />
           ))}
         </div>
       )}
