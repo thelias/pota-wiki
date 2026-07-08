@@ -19,7 +19,15 @@ const PORT = process.env.PORT || 3000
 const isProd = process.env.NODE_ENV === 'production'
 
 // ── Security ─────────────────────────────────────────────────────────────────
-app.use(helmet())
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      'frame-src': ["'self'", 'https://www.openstreetmap.org'],
+      'img-src':   ["'self'", 'data:', 'https://*.amazonaws.com', 'https://www.openstreetmap.org', 'https://*.tile.openstreetmap.org'],
+    },
+  },
+}))
 
 app.use(cors({
   origin: isProd ? process.env.ALLOWED_ORIGIN : true,
