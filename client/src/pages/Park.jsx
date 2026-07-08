@@ -652,7 +652,7 @@ function ReportItem({ report: r, user, onDelete, deletingId, onLightbox }) {
         <div className="report-photos">
           {r.photos.map(p => (
             <img key={p.id} src={p.url} alt={p.original_name || 'Photo'}
-              className="report-photo" onClick={() => onLightbox(p.url)} />
+              className="report-photo" loading="lazy" onClick={() => onLightbox(p.url)} />
           ))}
         </div>
       )}

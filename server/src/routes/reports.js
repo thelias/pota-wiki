@@ -8,8 +8,9 @@
 
 import { Router } from 'express'
 import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3'
+// S3 uploads are handled by processAndUpload in upload.js
 import pool from '../db/pool.js'
-import { upload } from '../middleware/upload.js'
+import { upload, processAndUpload } from '../middleware/upload.js'
 import { requireAuth, optionalAuth } from '../middleware/auth.js'
 
 const s3 = new S3Client({ region: process.env.AWS_REGION })
@@ -87,6 +88,8 @@ router.post('/', requireAuth, upload.array('photos', 4), async (req, res, next) 
     if (bands.some(b => !VALID_BANDS.includes(b))) return res.status(400).json({ error: 'Invalid band value' })
 
     const parsedPower = power_watts ? parseInt(power_watts, 10) : null
+
+    await processAndUpload(req)
 
     await client.query('BEGIN')
 
