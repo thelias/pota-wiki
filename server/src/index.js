@@ -39,6 +39,7 @@ app.use(cors({
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
+  skip: () => !isProd,
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -48,6 +49,7 @@ const authLimiter = rateLimit({
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 200,
+  skip: () => !isProd,
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,

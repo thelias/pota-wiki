@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav.jsx'
+import Pagination from '../components/Pagination.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const QRM_LABELS = {
@@ -297,11 +298,14 @@ export default function Park() {
         <div className="card">
           {/* Map */}
           {park.latitude && park.longitude ? (
-            <iframe
-              className="map-frame"
-              title="Park location"
-              src={`https://www.openstreetmap.org/export/embed.html?bbox=${park.longitude - 0.05},${park.latitude - 0.05},${parseFloat(park.longitude) + 0.05},${parseFloat(park.latitude) + 0.05}&layer=mapnik&marker=${park.latitude},${park.longitude}`}
-            />
+            <div style={{ position: 'relative' }}>
+              <iframe
+                className="map-frame"
+                title="Park location"
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${park.longitude - 0.05},${park.latitude - 0.05},${parseFloat(park.longitude) + 0.05},${parseFloat(park.latitude) + 0.05}&layer=mapnik&marker=${park.latitude},${park.longitude}`}
+              />
+              <div style={{ position: 'absolute', inset: 0, cursor: 'default' }} />
+            </div>
           ) : (
             <div className="map-placeholder">📍 No location data</div>
           )}
@@ -450,25 +454,7 @@ export default function Park() {
                   {pageReports.map(r => (
                     <ReportItem key={r.id} report={r} user={user} onDelete={handleDelete} deletingId={deletingId} onLightbox={setLightbox} onEdit={startEdit} editingId={editingReport?.id} />
                   ))}
-                  {totalPages > 1 && (
-                    <div style={{ display: 'flex', gap: 6, justifyContent: 'center', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-                      <button onClick={() => setRPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                        style={{ padding: '5px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: '0.82rem', cursor: page === 1 ? 'default' : 'pointer', opacity: page === 1 ? 0.4 : 1 }}>
-                        ← Prev
-                      </button>
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                        <button key={n} onClick={() => setRPage(n)}
-                          style={{ padding: '5px 10px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: n === page ? 'var(--green-mid)' : '#fff', color: n === page ? '#fff' : 'var(--text)', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}>
-                          {n}
-                        </button>
-                      ))}
-                      <button onClick={() => setRPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                        style={{ padding: '5px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: '0.82rem', cursor: page === totalPages ? 'default' : 'pointer', opacity: page === totalPages ? 0.4 : 1 }}>
-                        Next →
-                      </button>
-                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{page} of {totalPages}</span>
-                    </div>
-                  )}
+                  <Pagination page={page} totalPages={totalPages} onPage={setRPage} />
                 </>
               )
             })()}
@@ -648,7 +634,11 @@ function ReportItem({ report: r, user, onDelete, deletingId, onLightbox, onEdit,
     <div className="report-item" style={isEditing ? { outline: '2px solid var(--green-mid)', borderRadius: 'var(--radius)' } : {}}>
       <div className="report-header">
         <div>
-          <div className="report-callsign">{r.callsign}</div>
+          <Link to={`/profile/${encodeURIComponent(r.callsign)}`}
+            onClick={e => e.stopPropagation()}
+            style={{ textDecoration: 'none' }}>
+            <div className="report-callsign" style={{ cursor: 'pointer' }}>{r.callsign}</div>
+          </Link>
           {r.activation_date && (
             <div className="report-date">
               {new Date(r.activation_date.slice(0, 10).replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}

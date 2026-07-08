@@ -146,4 +146,26 @@ router.get('/my-reports', requireAuth, async (req, res, next) => {
   }
 })
 
+// ── Public profile: reports by callsign ───────────────────────────────────────
+
+router.get('/users/:callsign/reports', async (req, res, next) => {
+  try {
+    const callsign = req.params.callsign.toUpperCase().trim()
+    const { rows } = await pool.query(
+      `SELECT r.id, r.park_reference, r.activation_date, r.callsign,
+              r.cell_service, r.bathrooms, r.qrm_level,
+              r.general_comments, r.created_at,
+              p.name AS park_name
+       FROM activation_reports r
+       JOIN parks p ON p.reference = r.park_reference
+       WHERE UPPER(r.callsign) = $1
+       ORDER BY r.activation_date DESC NULLS LAST, r.created_at DESC`,
+      [callsign]
+    )
+    res.json(rows)
+  } catch (err) {
+    next(err)
+  }
+})
+
 export default router
