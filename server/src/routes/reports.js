@@ -140,12 +140,104 @@ router.post('/', requireAuth, upload.array('photos', 4), async (req, res, next) 
     res.status(201).json(report)
   } catch (err) {
     await client.query('ROLLBACK')
-    if (req.files) req.files.forEach(f => fs.unlink(f.path, () => {}))
     next(err)
   } finally {
     client.release()
   }
 })
+
+// ── Edit a report (owner only) ───────────────────────────────────────────────
+// Mounted separately at PUT /api/reports/:id
+
+export const editReport = async (req, res, next) => {
+  const client = await pool.connect()
+  try {
+    const id = parseInt(req.params.id)
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid report ID' })
+
+    const { rows } = await client.query('SELECT * FROM activation_reports WHERE id = $1', [id])
+    if (!rows.length) return res.status(404).json({ error: 'Report not found' })
+    if (rows[0].user_id !== req.user.userId)
+      return res.status(403).json({ error: 'You can only edit your own reports' })
+
+    const parkRef = rows[0].park_reference
+
+    const {
+      activation_date, cell_service, bathrooms, qrm_level,
+      parking, setup_locations, general_comments, cell_provider, antenna, power_watts,
+    } = req.body
+
+    const toArr = raw => raw ? (Array.isArray(raw) ? raw : [raw]).filter(Boolean) : []
+    const mode  = toArr(req.body.mode)
+    const bands = toArr(req.body.bands)
+
+    const VALID_BOOL  = ['yes', 'no', 'unknown', undefined, null, '']
+    const VALID_QRM   = ['very-low', 'low', 'normal', 'high', 'very-high', undefined, null, '']
+    const VALID_MODES = ['CW', 'FT4', 'FT8', 'SSB', 'DATA', 'PHONE', 'Other']
+    const VALID_BANDS = ['160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m', '1.25m', '70cm', '33cm', '23cm']
+    if (!VALID_BOOL.includes(cell_service)) return res.status(400).json({ error: 'Invalid cell_service value' })
+    if (!VALID_BOOL.includes(bathrooms))   return res.status(400).json({ error: 'Invalid bathrooms value' })
+    if (!VALID_QRM.includes(qrm_level))    return res.status(400).json({ error: 'Invalid qrm_level value' })
+    if (mode.some(m  => !VALID_MODES.includes(m)))  return res.status(400).json({ error: 'Invalid mode value' })
+    if (bands.some(b => !VALID_BANDS.includes(b)))  return res.status(400).json({ error: 'Invalid band value' })
+
+    const parsedPower        = power_watts ? parseInt(power_watts, 10) : null
+    const storedCellProvider = (cell_service === 'yes' || cell_service === 'no') ? (cell_provider || null) : null
+    const removePhotoIds     = req.body.removePhotoIds ? JSON.parse(req.body.removePhotoIds) : []
+
+    await client.query('BEGIN')
+
+    // Delete removed photos from S3 + DB
+    if (removePhotoIds.length) {
+      const { rows: toDelete } = await client.query(
+        'SELECT filename FROM report_photos WHERE id = ANY($1) AND report_id = $2',
+        [removePhotoIds, id]
+      )
+      await Promise.allSettled(
+        toDelete.map(p => s3.send(new DeleteObjectCommand({ Bucket: process.env.S3_BUCKET, Key: p.filename })))
+      )
+      await client.query('DELETE FROM report_photos WHERE id = ANY($1) AND report_id = $2', [removePhotoIds, id])
+    }
+
+    // Upload new photos
+    if (req.files?.length) {
+      req.params.ref = parkRef
+      await processAndUpload(req)
+      for (const file of req.files) {
+        await client.query(
+          `INSERT INTO report_photos (report_id, filename, url, original_name, mime_type, size_bytes)
+           VALUES ($1,$2,$3,$4,$5,$6)`,
+          [id, file.key, file.location, file.originalname, file.mimetype, file.size]
+        )
+      }
+    }
+
+    // Update fields
+    const { rows: [updated] } = await client.query(
+      `UPDATE activation_reports SET
+         activation_date = $1, cell_service = $2, cell_provider = $3, bathrooms = $4,
+         qrm_level = $5, parking = $6, setup_locations = $7, general_comments = $8,
+         antenna = $9, mode = $10, power_watts = $11, bands = $12, updated_at = now()
+       WHERE id = $13 RETURNING *`,
+      [
+        activation_date || null, cell_service || null, storedCellProvider, bathrooms || null,
+        qrm_level || null, parking || null, setup_locations || null, general_comments || null,
+        antenna || null, mode.length ? mode : null, parsedPower, bands.length ? bands : null, id,
+      ]
+    )
+
+    const { rows: photos } = await client.query('SELECT * FROM report_photos WHERE report_id = $1', [id])
+    updated.photos = photos
+
+    await client.query('COMMIT')
+    res.json(updated)
+  } catch (err) {
+    await client.query('ROLLBACK')
+    next(err)
+  } finally {
+    client.release()
+  }
+}
 
 // ── Delete a report (owner only) ─────────────────────────────────────────────
 // Mounted separately at DELETE /api/reports/:id

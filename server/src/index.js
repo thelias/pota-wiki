@@ -9,9 +9,10 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 import parksRouter from './routes/parks.js'
-import reportsRouter, { deleteReport } from './routes/reports.js'
+import reportsRouter, { deleteReport, editReport } from './routes/reports.js'
 import authRouter from './routes/auth.js'
 import { requireAuth } from './middleware/auth.js'
+import { upload } from './middleware/upload.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -65,6 +66,7 @@ app.use(express.static(publicDir))
 app.use('/api/auth', authLimiter, authRouter)
 app.use('/api/parks', apiLimiter, parksRouter)
 app.use('/api/parks/:ref/reports', apiLimiter, reportsRouter)
+app.put('/api/reports/:id', apiLimiter, requireAuth, upload.array('photos', 4), editReport)
 app.delete('/api/reports/:id', apiLimiter, requireAuth, deleteReport)
 
 // ── SPA fallback (React Router) ──────────────────────────────────────────────

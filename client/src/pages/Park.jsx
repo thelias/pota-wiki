@@ -104,6 +104,12 @@ export default function Park() {
   const [rPage, setRPage] = useState(1)
   const REPORTS_PER_PAGE = 5
 
+  // Edit mode
+  const [editingReport,   setEditingReport]   = useState(null)  // null = create, report obj = edit
+  const [existingPhotos,  setExistingPhotos]  = useState([])    // photos already on the report
+  const [removedPhotoIds, setRemovedPhotoIds] = useState([])    // IDs to delete on save
+  const formRef = useRef(null)
+
   // Load park
   useEffect(() => {
     setPLoading(true)
@@ -146,7 +152,7 @@ export default function Park() {
     setPhotoError(null)
   }
 
-  // Submit report
+  // Submit / update report
   async function handleSubmit(e) {
     e.preventDefault()
     if (!user) return navigate(`/auth?return=/park/${encodeURIComponent(ref)}`)
@@ -155,30 +161,88 @@ export default function Park() {
 
     const fd = new FormData()
     Object.entries(form).forEach(([k, v]) => {
-      if (k === 'mode' || k === 'bands') return // handled below
+      if (k === 'mode' || k === 'bands') return
       fd.append(k, v)
     })
     form.mode.forEach(m => fd.append('mode', m))
     form.bands.forEach(b => fd.append('bands', b))
     photos.forEach(f => fd.append('photos', f))
+    if (editingReport && removedPhotoIds.length) {
+      fd.append('removePhotoIds', JSON.stringify(removedPhotoIds))
+    }
+
+    const isEdit = !!editingReport
+    const url = isEdit
+      ? `/api/reports/${editingReport.id}`
+      : `/api/parks/${encodeURIComponent(ref)}/reports`
 
     try {
-      const res = await fetch(`/api/parks/${encodeURIComponent(ref)}/reports`, {
-        method: 'POST', body: fd,
-      })
+      const res = await fetch(url, { method: isEdit ? 'PUT' : 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) { setSubmitMsg({ type: 'error', text: data.error || 'Submission failed.' }); return }
-      setSubmitMsg({ type: 'success', text: 'Report submitted!' })
+
+      setSubmitMsg({ type: 'success', text: isEdit ? 'Report updated!' : 'Report submitted!' })
       setForm(EMPTY_FORM)
       setPhotos([])
-      previews.forEach(url => URL.revokeObjectURL(url))
+      previews.forEach(u => URL.revokeObjectURL(u))
       setPreviews([])
-      loadReports()
+      if (isEdit) {
+        setEditingReport(null)
+        setExistingPhotos([])
+        setRemovedPhotoIds([])
+        setReports(prev => prev.map(r => r.id === data.id ? data : r))
+      } else {
+        loadReports()
+      }
     } catch {
       setSubmitMsg({ type: 'error', text: 'Network error. Try again.' })
     } finally {
       setSubmitting(false)
     }
+  }
+
+  // Start editing a report
+  function startEdit(report) {
+    setEditingReport(report)
+    setExistingPhotos(report.photos || [])
+    setRemovedPhotoIds([])
+    setPhotos([])
+    previews.forEach(url => URL.revokeObjectURL(url))
+    setPreviews([])
+    setPhotoError(null)
+    setSubmitMsg(null)
+    setForm({
+      activation_date:  report.activation_date ? report.activation_date.slice(0, 10) : '',
+      cell_service:     report.cell_service  || 'unknown',
+      bathrooms:        report.bathrooms     || 'unknown',
+      qrm_level:        report.qrm_level     || 'normal',
+      parking:          report.parking       || '',
+      setup_locations:  report.setup_locations || '',
+      general_comments: report.general_comments || '',
+      cell_provider:    report.cell_provider || '',
+      antenna:          report.antenna       || '',
+      mode:             report.mode          || [],
+      bands:            report.bands         || [],
+      power_watts:      report.power_watts != null ? String(report.power_watts) : '',
+    })
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
+
+  function cancelEdit() {
+    setEditingReport(null)
+    setExistingPhotos([])
+    setRemovedPhotoIds([])
+    setPhotos([])
+    previews.forEach(url => URL.revokeObjectURL(url))
+    setPreviews([])
+    setPhotoError(null)
+    setSubmitMsg(null)
+    setForm(EMPTY_FORM)
+  }
+
+  function removeExistingPhoto(id) {
+    setRemovedPhotoIds(prev => [...prev, id])
+    setExistingPhotos(prev => prev.filter(p => p.id !== id))
   }
 
   // Delete report
@@ -335,7 +399,7 @@ export default function Park() {
               {park.first_activation_date && (
                 <div className="info-item">
                   <label>First Activation</label>
-                  <div className="val">{new Date(park.first_activation_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                  <div className="val">{new Date(park.first_activation_date.replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                 </div>
               )}
               {park.access_methods && (
@@ -384,7 +448,7 @@ export default function Park() {
               return (
                 <>
                   {pageReports.map(r => (
-                    <ReportItem key={r.id} report={r} user={user} onDelete={handleDelete} deletingId={deletingId} onLightbox={setLightbox} />
+                    <ReportItem key={r.id} report={r} user={user} onDelete={handleDelete} deletingId={deletingId} onLightbox={setLightbox} onEdit={startEdit} editingId={editingReport?.id} />
                   ))}
                   {totalPages > 1 && (
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'center', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
@@ -411,10 +475,18 @@ export default function Park() {
           </div>
         </div>
 
-        {/* ── Submit Report ──────────────────────────────── */}
-        <div className="card">
+        {/* ── Submit / Edit Report ──────────────────────── */}
+        <div className="card" ref={formRef}>
           <div className="card-header">
-            <h2>Submit Activation Report</h2>
+            <h2>{editingReport ? 'Edit Report' : 'Submit Activation Report'}</h2>
+            {editingReport && (
+              <button onClick={cancelEdit} style={{
+                background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
+                padding: '4px 12px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-muted)',
+              }}>
+                Cancel
+              </button>
+            )}
           </div>
           <div className="card-body">
             {!user && user !== undefined && (
@@ -500,15 +572,31 @@ export default function Park() {
                   <textarea value={form.general_comments} onChange={field('general_comments')} placeholder="Tips, conditions, anything useful for future activators…" rows={3} />
                 </div>
 
+                {/* Existing photos (edit mode) */}
+                {editingReport && existingPhotos.length > 0 && (
+                  <div className="form-row">
+                    <label>Current Photos</label>
+                    <div className="photo-preview-row">
+                      {existingPhotos.map(p => (
+                        <div key={p.id} className="preview-thumb">
+                          <img src={p.url} alt={p.original_name || 'Photo'} />
+                          <button type="button" className="remove-btn"
+                            onClick={() => removeExistingPhoto(p.id)}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Photos */}
                 <div className="form-row">
-                  <label>Photos (max 4)</label>
-                  <div className="photo-upload-area" onClick={() => photos.length < 4 && fileRef.current?.click()}>
+                  <label>{editingReport ? 'Add More Photos' : 'Photos'} (max {editingReport ? 4 - existingPhotos.length : 4})</label>
+                  <div className="photo-upload-area" onClick={() => photos.length < (editingReport ? 4 - existingPhotos.length : 4) && fileRef.current?.click()}>
                     <input ref={fileRef} type="file" accept="image/*" multiple
                       onChange={e => { addPhotos(e.target.files); e.target.value = '' }}
                       style={{ display: 'none' }} />
                     <div className="photo-upload-label">
-                      📷 Click to add photos{photos.length > 0 ? ` (${photos.length}/4)` : ''}
+                      📷 Click to add photos{photos.length > 0 ? ` (${photos.length}/${editingReport ? 4 - existingPhotos.length : 4})` : ''}
                     </div>
                     {previews.length > 0 && (
                       <div className="photo-preview-row" style={{ justifyContent: 'center' }}>
@@ -528,7 +616,7 @@ export default function Park() {
                 </div>
 
                 <button type="submit" className="btn-green" disabled={submitting || !user || !!photoError}>
-                  {submitting ? 'Submitting…' : 'Submit Report'}
+                  {submitting ? (editingReport ? 'Saving…' : 'Submitting…') : (editingReport ? 'Save Changes' : 'Submit Report')}
                 </button>
 
                 {submitMsg && (
@@ -551,26 +639,34 @@ export default function Park() {
 
 /* ── Sub-components ──────────────────────────────────────── */
 
-function ReportItem({ report: r, user, onDelete, deletingId, onLightbox }) {
-  const isOwner = user && r.user_id === user.id
-  const qrm     = QRM_LABELS[r.qrm_level]
+function ReportItem({ report: r, user, onDelete, deletingId, onLightbox, onEdit, editingId }) {
+  const isOwner   = user && r.user_id === user.id
+  const isEditing = editingId === r.id
+  const qrm       = QRM_LABELS[r.qrm_level]
 
   return (
-    <div className="report-item">
+    <div className="report-item" style={isEditing ? { outline: '2px solid var(--green-mid)', borderRadius: 'var(--radius)' } : {}}>
       <div className="report-header">
         <div>
           <div className="report-callsign">{r.callsign}</div>
           {r.activation_date && (
             <div className="report-date">
-              {new Date(r.activation_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              {new Date(r.activation_date.replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             </div>
           )}
         </div>
         {isOwner && (
-          <button className="btn-delete" disabled={deletingId === r.id}
-            onClick={() => onDelete(r.id)}>
-            {deletingId === r.id ? '…' : 'Delete'}
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button className="btn-delete" style={{ background: 'var(--green-muted)', color: 'var(--green-mid)', borderColor: 'var(--green-light)' }}
+              disabled={!!deletingId}
+              onClick={() => onEdit(r)}>
+              Edit
+            </button>
+            <button className="btn-delete" disabled={deletingId === r.id}
+              onClick={() => onDelete(r.id)}>
+              {deletingId === r.id ? '…' : 'Delete'}
+            </button>
+          </div>
         )}
       </div>
 
