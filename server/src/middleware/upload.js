@@ -5,7 +5,7 @@ import path from 'path'
 import { randomUUID } from 'crypto'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
-const MAX_SIZE_BYTES = 8 * 1024 * 1024 // 8 MB
+const MAX_SIZE_BYTES = 20 * 1024 * 1024 // 20 MB per file
 
 export const s3 = new S3Client({ region: process.env.AWS_REGION })
 
