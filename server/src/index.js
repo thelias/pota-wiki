@@ -24,7 +24,7 @@ app.use(helmet({
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
       'frame-src': ["'self'", 'https://www.openstreetmap.org'],
-      'img-src':   ["'self'", 'data:', 'https://*.amazonaws.com', 'https://www.openstreetmap.org', 'https://*.tile.openstreetmap.org'],
+      'img-src':   ["'self'", 'data:', 'blob:', 'https://*.amazonaws.com', 'https://www.openstreetmap.org', 'https://*.tile.openstreetmap.org'],
     },
   },
 }))

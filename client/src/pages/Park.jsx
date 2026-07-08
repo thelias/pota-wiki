@@ -123,9 +123,19 @@ export default function Park() {
   }, [ref])
   useEffect(() => { loadReports() }, [loadReports])
 
+  const MAX_TOTAL_BYTES = 56 * 1024 * 1024 // 56 MB
+  const [photoError, setPhotoError] = useState(null)
+
   // Photo handling
   function addPhotos(files) {
     const newFiles = Array.from(files).slice(0, 4 - photos.length)
+    const combined = [...photos, ...newFiles]
+    const totalSize = combined.reduce((sum, f) => sum + f.size, 0)
+    if (totalSize > MAX_TOTAL_BYTES) {
+      setPhotoError(`Total photo size is too large (${(totalSize / 1024 / 1024).toFixed(1)} MB). Please keep combined size under 56 MB.`)
+      return
+    }
+    setPhotoError(null)
     setPhotos(prev => [...prev, ...newFiles])
     setPreviews(prev => [...prev, ...newFiles.map(f => URL.createObjectURL(f))])
   }
@@ -133,6 +143,7 @@ export default function Park() {
     URL.revokeObjectURL(previews[i])
     setPhotos(p => p.filter((_, idx) => idx !== i))
     setPreviews(p => p.filter((_, idx) => idx !== i))
+    setPhotoError(null)
   }
 
   // Submit report
@@ -511,9 +522,12 @@ export default function Park() {
                       </div>
                     )}
                   </div>
+                  {photoError && (
+                    <div className="submit-msg error" style={{ marginTop: 8 }}>{photoError}</div>
+                  )}
                 </div>
 
-                <button type="submit" className="btn-green" disabled={submitting || !user}>
+                <button type="submit" className="btn-green" disabled={submitting || !user || !!photoError}>
                   {submitting ? 'Submitting…' : 'Submit Report'}
                 </button>
 
