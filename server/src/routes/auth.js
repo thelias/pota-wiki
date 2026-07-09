@@ -232,6 +232,23 @@ router.post('/reset-password', async (req, res, next) => {
   }
 })
 
+// ── Top contributors ──────────────────────────────────────────────────────────
+
+router.get('/top-contributors', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT callsign, report_count
+       FROM users
+       WHERE report_count > 0
+       ORDER BY report_count DESC
+       LIMIT 10`
+    )
+    res.json(rows)
+  } catch (err) {
+    next(err)
+  }
+})
+
 // ── Public profile: reports by callsign ───────────────────────────────────────
 
 router.get('/users/:callsign/reports', async (req, res, next) => {

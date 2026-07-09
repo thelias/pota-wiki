@@ -19,7 +19,11 @@ const EMPTY_FORM = {
   activation_date: '', cell_service: 'unknown', bathrooms: 'unknown',
   qrm_level: 'normal', parking: '', setup_locations: '', general_comments: '',
   cell_provider: '', antenna: '', mode: [], bands: [], power_watts: '',
+  parking_availability: '', busyness: '', time_of_day: '',
 }
+
+const QRM_NUM = { 'very-low': 1, 'low': 2, 'normal': 3, 'high': 4, 'very-high': 5 }
+const QRM_NAMES = { 1: 'Very Low', 2: 'Low', 3: 'Normal', 4: 'High', 5: 'Very High' }
 
 function MultiSelect({ options, value, onChange, placeholder }) {
   const [open, setOpen] = useState(false)
@@ -93,6 +97,8 @@ export default function Park() {
   const [rLoading, setRLoading] = useState(true)
   const [error,   setError]   = useState(null)
 
+  const [summary,   setSummary]   = useState(null)
+
   const [form,      setForm]      = useState(EMPTY_FORM)
   const [photos,    setPhotos]    = useState([])
   const [previews,  setPreviews]  = useState([])
@@ -118,6 +124,14 @@ export default function Park() {
       .then(r => { if (!r.ok) throw new Error('Park not found'); return r.json() })
       .then(d => { setPark(d); setPLoading(false) })
       .catch(e => { setError(e.message); setPLoading(false) })
+  }, [ref])
+
+  // Load summary
+  useEffect(() => {
+    fetch(`/api/parks/${encodeURIComponent(ref)}/summary`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setSummary(d) })
+      .catch(() => {})
   }, [ref])
 
   // Load reports
@@ -163,7 +177,7 @@ export default function Park() {
     const fd = new FormData()
     Object.entries(form).forEach(([k, v]) => {
       if (k === 'mode' || k === 'bands') return
-      fd.append(k, v)
+      if (v !== '') fd.append(k, v)  // skip empty optional fields
     })
     form.mode.forEach(m => fd.append('mode', m))
     form.bands.forEach(b => fd.append('bands', b))
@@ -195,6 +209,7 @@ export default function Park() {
       } else {
         loadReports()
       }
+      refreshSummary()
     } catch {
       setSubmitMsg({ type: 'error', text: 'Network error. Try again.' })
     } finally {
@@ -221,12 +236,22 @@ export default function Park() {
       setup_locations:  report.setup_locations || '',
       general_comments: report.general_comments || '',
       cell_provider:    report.cell_provider || '',
-      antenna:          report.antenna       || '',
-      mode:             report.mode          || [],
-      bands:            report.bands         || [],
-      power_watts:      report.power_watts != null ? String(report.power_watts) : '',
+      antenna:               report.antenna              || '',
+      mode:                  report.mode                || [],
+      bands:                 report.bands               || [],
+      power_watts:           report.power_watts != null ? String(report.power_watts) : '',
+      parking_availability:  report.parking_availability || '',
+      busyness:              report.busyness             || '',
+      time_of_day:           report.time_of_day          || '',
     })
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
+
+  function refreshSummary() {
+    fetch(`/api/parks/${encodeURIComponent(ref)}/summary`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setSummary(d) })
+      .catch(() => {})
   }
 
   function cancelEdit() {
@@ -252,7 +277,7 @@ export default function Park() {
     setDeletingId(id)
     try {
       const res = await fetch(`/api/reports/${id}`, { method: 'DELETE' })
-      if (res.ok) setReports(prev => prev.filter(r => r.id !== id))
+      if (res.ok) { setReports(prev => prev.filter(r => r.id !== id)); refreshSummary() }
     } finally {
       setDeletingId(null)
     }
@@ -428,6 +453,9 @@ export default function Park() {
           </div>
         </div>
 
+        {/* ── Aggregated Summary ────────────────────────── */}
+        {summary && summary.total >= 2 && <ParkSummary summary={summary} />}
+
         {/* ── Activation Reports ─────────────────────────── */}
         <div className="card">
           <div className="card-header">
@@ -496,6 +524,30 @@ export default function Park() {
                     <input type="date" value={form.activation_date} onChange={field('activation_date')} required />
                   </div>
                 </div>
+                {/* Parking / Busyness / Time of Day */}
+                <div className="form-grid form-grid-3">
+                  <div className="form-row">
+                    <label>Parking Availability</label>
+                    <ScaleToggle name="parking_availability" value={form.parking_availability}
+                      onChange={v => setForm(f => ({ ...f, parking_availability: v }))}
+                      options={[['good', 'Good'], ['okay', 'Okay'], ['bad', 'Bad']]}
+                      colors={['#27ae60', '#e67e22', '#e74c3c']} />
+                  </div>
+                  <div className="form-row">
+                    <label>Park Busyness</label>
+                    <ScaleToggle name="busyness" value={form.busyness}
+                      onChange={v => setForm(f => ({ ...f, busyness: v }))}
+                      options={[['quiet', 'Quiet'], ['moderate', 'Moderate'], ['busy', 'Busy']]}
+                      colors={['#27ae60', '#e67e22', '#e74c3c']} />
+                  </div>
+                  <div className="form-row">
+                    <label>Time of Day</label>
+                    <ScaleToggle name="time_of_day" value={form.time_of_day}
+                      onChange={v => setForm(f => ({ ...f, time_of_day: v }))}
+                      options={[['morning', 'Morning'], ['afternoon', 'Afternoon'], ['evening', 'Evening']]}
+                      colors={['var(--green-mid)', 'var(--green-mid)', 'var(--green-mid)']} />
+                  </div>
+                </div>
 
                 {/* Toggles */}
                 <div className="form-grid form-grid-3">
@@ -519,6 +571,7 @@ export default function Park() {
                     </select>
                   </div>
                 </div>
+
 
                 {/* Mode + Bands + Power */}
                 <div className="form-grid" style={{ marginBottom: 16 }}>
@@ -673,6 +726,28 @@ function ReportItem({ report: r, user, onDelete, deletingId, onLightbox, onEdit,
           </div>
         )}
         <Field label="Bathrooms"    value={r.bathrooms}    bool />
+        {r.parking_availability && (
+          <div className="rf-item">
+            <label>Parking</label>
+            <div className={`rfval ${r.parking_availability === 'good' ? 'bool-yes' : r.parking_availability === 'bad' ? 'bool-no' : 'bool-unk'}`}>
+              {{ good: '✓ Good', okay: '~ Okay', bad: '✗ Bad' }[r.parking_availability]}
+            </div>
+          </div>
+        )}
+        {r.busyness && (
+          <div className="rf-item">
+            <label>Busyness</label>
+            <div className={`rfval ${r.busyness === 'quiet' ? 'bool-yes' : r.busyness === 'busy' ? 'bool-no' : 'bool-unk'}`}>
+              {{ quiet: 'Quiet', moderate: 'Moderate', busy: 'Busy' }[r.busyness]}
+            </div>
+          </div>
+        )}
+        {r.time_of_day && (
+          <div className="rf-item">
+            <label>Time of Day</label>
+            <div className="rfval">{{ morning: '🌅 Morning', afternoon: '☀️ Afternoon', evening: '🌇 Evening' }[r.time_of_day]}</div>
+          </div>
+        )}
         {r.qrm_level && (
           <div className="rf-item">
             <label>QRM Level</label>
@@ -776,6 +851,127 @@ function LinkBtn({ href, color, bg, children }) {
     onMouseLeave={e => Object.assign(e.currentTarget.style, { opacity: '1', transform: '' })}>
       {children}
     </a>
+  )
+}
+
+function ScaleToggle({ name, value, onChange, options, colors }) {
+  return (
+    <div className="bool-group">
+      {options.map(([v, label], i) => (
+        <div key={v} className="bool-opt">
+          <input type="radio" name={name} id={`${name}-${v}`} value={v}
+            checked={value === v} onChange={() => onChange(value === v ? '' : v)} />
+          <label htmlFor={`${name}-${v}`} style={{
+            background: value === v ? colors[i] : undefined,
+            color:      value === v ? '#fff'     : undefined,
+          }}>
+            {label}
+          </label>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ParkSummary({ summary: s }) {
+  const { total, cell_yes, cell_no, cell_total, bath_yes, bath_no, bath_total,
+          qrm_min, qrm_max, qrm_avg, qrm_total,
+          parking_good, parking_okay, parking_bad, parking_total, patterns } = s
+
+  // Cell service verdict
+  function boolVerdict(yes, no, tot) {
+    if (!tot) return null
+    const pct = yes / tot
+    if (pct >= 0.65) return { label: '✓ Yes', sub: `${yes} of ${tot} reported service`, cls: 'bool-yes' }
+    if (pct <= 0.35) return { label: '✗ No',  sub: `${no} of ${tot} reported no service`, cls: 'bool-no' }
+    return { label: 'Mixed', sub: `${yes} yes · ${no} no out of ${tot}`, cls: 'bool-unk' }
+  }
+    function boolVerdictBath(yes, no, tot) {
+    if (!tot) return null
+    const pct = yes / tot
+    if (pct >= 0.65) return { label: '✓ Yes', sub: `${yes} of ${tot} reported facilities`, cls: 'bool-yes' }
+    if (pct <= 0.35) return { label: '✗ No',  sub: `${no} of ${tot} reported no facilities`, cls: 'bool-no' }
+    return { label: 'Mixed', sub: `${yes} yes · ${no} no out of ${tot}`, cls: 'bool-unk' }
+  }
+
+  // QRM label from numeric
+  function qrmLabel(n) { return QRM_NAMES[Math.round(n)] || '—' }
+
+  // Parking verdict — top answer
+  function parkingVerdict() {
+    if (!parking_total) return null
+    const counts = [['good', parking_good], ['okay', parking_okay], ['bad', parking_bad]]
+    const [top, topCount] = counts.reduce((a, b) => b[1] > a[1] ? b : a)
+    const labels = { good: '✓ Good', okay: '~ Okay', bad: '✗ Bad' }
+    const cls    = { good: 'bool-yes', okay: 'bool-unk', bad: 'bool-no' }
+    return { label: labels[top], sub: `${topCount} of ${parking_total} reported`, cls: cls[top] }
+  }
+
+  // Busyness pattern blurb
+  function busynessBlurb() {
+    if (!patterns?.length) return null
+    const score = p => parseFloat(p.avg_busyness)
+    const busy  = patterns.filter(p => score(p) >= 2.4)
+    const quiet = patterns.filter(p => score(p) <= 1.6)
+    const fmt   = p => `${p.day_type} ${p.time_of_day}s`
+
+    if (!busy.length && !quiet.length) return null
+    const parts = []
+    if (busy.length)  parts.push(`tends to be busier during ${busy.map(fmt).join(' and ')}`)
+    if (quiet.length) parts.push(`quieter during ${quiet.map(fmt).join(' and ')}`)
+    return parts.join(', ') + '.'
+  }
+
+  const cellV    = boolVerdict(cell_yes, cell_no, cell_total)
+  const bathV    = boolVerdictBath(bath_yes, bath_no, bath_total)
+  const parkingV = parkingVerdict()
+  const blurb    = busynessBlurb()
+
+  const statCards = [
+    cellV    && { heading: 'Cell Service', value: cellV.label,    sub: cellV.sub,    cls: cellV.cls },
+    bathV    && { heading: 'Bathrooms',    value: bathV.label,    sub: bathV.sub,    cls: bathV.cls },
+    qrm_total > 0 && {
+      heading: 'QRM Level',
+      value: qrm_min === qrm_max ? qrmLabel(qrm_min) : `${qrmLabel(qrm_min)} – ${qrmLabel(qrm_max)}`,
+      sub: `avg ${qrmLabel(qrm_avg)} · ${qrm_total} report${qrm_total !== 1 ? 's' : ''}`,
+      cls: '',
+    },
+    parkingV && { heading: 'Parking', value: parkingV.label, sub: parkingV.sub, cls: parkingV.cls },
+  ].filter(Boolean)
+
+  if (!statCards.length && !blurb) return null
+
+  return (
+    <div className="card">
+      <div className="card-header" style={{ alignItems: 'baseline' }}>
+        <h2>Activator Insights</h2>
+        <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+          Based on {total} report{total !== 1 ? 's' : ''}
+        </span>
+      </div>
+      <div className="card-body">
+        {statCards.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: blurb ? 16 : 0 }}>
+            {statCards.map(({ heading, value, sub, cls }) => (
+              <div key={heading} style={{ background: 'var(--green-muted)', borderRadius: 8, padding: '12px 14px' }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 6 }}>
+                  {heading}
+                </div>
+                <div className={`rfval ${cls}`} style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 4 }}>
+                  {value}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sub}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {blurb && (
+          <div style={{ fontSize: '0.88rem', color: 'var(--text)', background: 'var(--green-muted)', borderRadius: 8, padding: '10px 14px' }}>
+            🕐 <strong>Busyness:</strong> This park {blurb}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 

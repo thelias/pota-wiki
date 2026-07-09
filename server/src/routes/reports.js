@@ -67,6 +67,7 @@ router.post('/', requireAuth, upload.array('photos', 4), async (req, res, next) 
       activation_date, cell_service, bathrooms,
       qrm_level, parking, setup_locations, general_comments,
       cell_provider, antenna, power_watts,
+      parking_availability, busyness, time_of_day,
     } = req.body
 
     // mode and bands may arrive as single string or array from multipart form
@@ -77,13 +78,19 @@ router.post('/', requireAuth, upload.array('photos', 4), async (req, res, next) 
     // Callsign always comes from the authenticated user — not the request body
     const callsign = req.user.callsign
 
-    const VALID_BOOL  = ['yes', 'no', 'unknown', undefined, null, '']
-    const VALID_QRM   = ['very-low', 'low', 'normal', 'high', 'very-high', undefined, null, '']
-    const VALID_MODES = ['CW', 'FT4', 'FT8', 'SSB', 'DATA', 'PHONE', 'Other']
-    const VALID_BANDS = ['160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m', '1.25m', '70cm', '33cm', '23cm']
-    if (!VALID_BOOL.includes(cell_service)) return res.status(400).json({ error: 'Invalid cell_service value' })
-    if (!VALID_BOOL.includes(bathrooms))   return res.status(400).json({ error: 'Invalid bathrooms value' })
-    if (!VALID_QRM.includes(qrm_level))    return res.status(400).json({ error: 'Invalid qrm_level value' })
+    const VALID_BOOL     = ['yes', 'no', 'unknown', undefined, null, '']
+    const VALID_QRM      = ['very-low', 'low', 'normal', 'high', 'very-high', undefined, null, '']
+    const VALID_MODES    = ['CW', 'FT4', 'FT8', 'SSB', 'DATA', 'PHONE', 'Other']
+    const VALID_BANDS    = ['160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m', '1.25m', '70cm', '33cm', '23cm']
+    const VALID_PARKING  = ['good', 'okay', 'bad', undefined, null, '']
+    const VALID_BUSYNESS = ['quiet', 'moderate', 'busy', undefined, null, '']
+    const VALID_TOD      = ['morning', 'afternoon', 'evening', undefined, null, '']
+    if (!VALID_BOOL.includes(cell_service))      return res.status(400).json({ error: 'Invalid cell_service value' })
+    if (!VALID_BOOL.includes(bathrooms))         return res.status(400).json({ error: 'Invalid bathrooms value' })
+    if (!VALID_QRM.includes(qrm_level))          return res.status(400).json({ error: 'Invalid qrm_level value' })
+    if (!VALID_PARKING.includes(parking_availability))  return res.status(400).json({ error: 'Invalid parking_availability value' })
+    if (!VALID_BUSYNESS.includes(busyness))      return res.status(400).json({ error: 'Invalid busyness value' })
+    if (!VALID_TOD.includes(time_of_day))        return res.status(400).json({ error: 'Invalid time_of_day value' })
     if (mode.some(m => !VALID_MODES.includes(m)))  return res.status(400).json({ error: 'Invalid mode value' })
     if (bands.some(b => !VALID_BANDS.includes(b))) return res.status(400).json({ error: 'Invalid band value' })
 
@@ -101,25 +108,29 @@ router.post('/', requireAuth, upload.array('photos', 4), async (req, res, next) 
     const { rows: [report] } = await client.query(
       `INSERT INTO activation_reports
          (park_reference, callsign, activation_date, cell_service, cell_provider, bathrooms,
-          qrm_level, parking, setup_locations, general_comments, antenna, mode, power_watts, bands, user_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+          qrm_level, parking, setup_locations, general_comments, antenna, mode, power_watts, bands, user_id,
+          parking_availability, busyness, time_of_day)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
        RETURNING *`,
       [
         ref,
         callsign,
-        activation_date   || null,
-        cell_service      || null,
+        activation_date      || null,
+        cell_service         || null,
         storedCellProvider,
-        bathrooms         || null,
-        qrm_level         || null,
-        parking           || null,
-        setup_locations   || null,
-        general_comments  || null,
-        antenna           || null,
+        bathrooms            || null,
+        qrm_level            || null,
+        parking              || null,
+        setup_locations      || null,
+        general_comments     || null,
+        antenna              || null,
         mode.length  ? mode  : null,
         parsedPower,
         bands.length ? bands : null,
         req.user.userId,
+        parking_availability || null,
+        busyness             || null,
+        time_of_day          || null,
       ]
     )
 
@@ -134,6 +145,11 @@ router.post('/', requireAuth, upload.array('photos', 4), async (req, res, next) 
         photos.push(photo)
       }
     }
+
+    await client.query(
+      'UPDATE users SET report_count = report_count + 1 WHERE id = $1',
+      [req.user.userId]
+    )
 
     await client.query('COMMIT')
     report.photos = photos
@@ -165,21 +181,28 @@ export const editReport = async (req, res, next) => {
     const {
       activation_date, cell_service, bathrooms, qrm_level,
       parking, setup_locations, general_comments, cell_provider, antenna, power_watts,
+      parking_availability, busyness, time_of_day,
     } = req.body
 
     const toArr = raw => raw ? (Array.isArray(raw) ? raw : [raw]).filter(Boolean) : []
     const mode  = toArr(req.body.mode)
     const bands = toArr(req.body.bands)
 
-    const VALID_BOOL  = ['yes', 'no', 'unknown', undefined, null, '']
-    const VALID_QRM   = ['very-low', 'low', 'normal', 'high', 'very-high', undefined, null, '']
-    const VALID_MODES = ['CW', 'FT4', 'FT8', 'SSB', 'DATA', 'PHONE', 'Other']
-    const VALID_BANDS = ['160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m', '1.25m', '70cm', '33cm', '23cm']
-    if (!VALID_BOOL.includes(cell_service)) return res.status(400).json({ error: 'Invalid cell_service value' })
-    if (!VALID_BOOL.includes(bathrooms))   return res.status(400).json({ error: 'Invalid bathrooms value' })
-    if (!VALID_QRM.includes(qrm_level))    return res.status(400).json({ error: 'Invalid qrm_level value' })
-    if (mode.some(m  => !VALID_MODES.includes(m)))  return res.status(400).json({ error: 'Invalid mode value' })
-    if (bands.some(b => !VALID_BANDS.includes(b)))  return res.status(400).json({ error: 'Invalid band value' })
+    const VALID_BOOL     = ['yes', 'no', 'unknown', undefined, null, '']
+    const VALID_QRM      = ['very-low', 'low', 'normal', 'high', 'very-high', undefined, null, '']
+    const VALID_MODES    = ['CW', 'FT4', 'FT8', 'SSB', 'DATA', 'PHONE', 'Other']
+    const VALID_BANDS    = ['160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m', '1.25m', '70cm', '33cm', '23cm']
+    const VALID_PARKING  = ['good', 'okay', 'bad', undefined, null, '']
+    const VALID_BUSYNESS = ['quiet', 'moderate', 'busy', undefined, null, '']
+    const VALID_TOD      = ['morning', 'afternoon', 'evening', undefined, null, '']
+    if (!VALID_BOOL.includes(cell_service))             return res.status(400).json({ error: 'Invalid cell_service value' })
+    if (!VALID_BOOL.includes(bathrooms))                return res.status(400).json({ error: 'Invalid bathrooms value' })
+    if (!VALID_QRM.includes(qrm_level))                 return res.status(400).json({ error: 'Invalid qrm_level value' })
+    if (!VALID_PARKING.includes(parking_availability))  return res.status(400).json({ error: 'Invalid parking_availability value' })
+    if (!VALID_BUSYNESS.includes(busyness))             return res.status(400).json({ error: 'Invalid busyness value' })
+    if (!VALID_TOD.includes(time_of_day))               return res.status(400).json({ error: 'Invalid time_of_day value' })
+    if (mode.some(m  => !VALID_MODES.includes(m)))      return res.status(400).json({ error: 'Invalid mode value' })
+    if (bands.some(b => !VALID_BANDS.includes(b)))      return res.status(400).json({ error: 'Invalid band value' })
 
     const parsedPower        = power_watts ? parseInt(power_watts, 10) : null
     const storedCellProvider = (cell_service === 'yes' || cell_service === 'no') ? (cell_provider || null) : null
@@ -217,12 +240,16 @@ export const editReport = async (req, res, next) => {
       `UPDATE activation_reports SET
          activation_date = $1, cell_service = $2, cell_provider = $3, bathrooms = $4,
          qrm_level = $5, parking = $6, setup_locations = $7, general_comments = $8,
-         antenna = $9, mode = $10, power_watts = $11, bands = $12, updated_at = now()
-       WHERE id = $13 RETURNING *`,
+         antenna = $9, mode = $10, power_watts = $11, bands = $12,
+         parking_availability = $13, busyness = $14, time_of_day = $15,
+         updated_at = now()
+       WHERE id = $16 RETURNING *`,
       [
-        activation_date || null, cell_service || null, storedCellProvider, bathrooms || null,
-        qrm_level || null, parking || null, setup_locations || null, general_comments || null,
-        antenna || null, mode.length ? mode : null, parsedPower, bands.length ? bands : null, id,
+        activation_date      || null, cell_service || null, storedCellProvider, bathrooms || null,
+        qrm_level            || null, parking || null, setup_locations || null, general_comments || null,
+        antenna              || null, mode.length ? mode : null, parsedPower, bands.length ? bands : null,
+        parking_availability || null, busyness || null, time_of_day || null,
+        id,
       ]
     )
 
@@ -259,6 +286,10 @@ export const deleteReport = async (req, res, next) => {
     )
 
     await pool.query('DELETE FROM activation_reports WHERE id = $1', [id])
+    await pool.query(
+      'UPDATE users SET report_count = GREATEST(0, report_count - 1) WHERE id = $1',
+      [req.user.userId]
+    )
 
     // Delete photos from S3 (filename stores the S3 key)
     await Promise.allSettled(

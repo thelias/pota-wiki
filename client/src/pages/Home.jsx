@@ -39,6 +39,19 @@ export default function Home() {
   const [geoError,   setGeoError]   = useState(null)
   const { user, logout } = useAuth()
 
+  const [homeTab,       setHomeTab]       = useState('parks')
+  const [contributors,  setContributors]  = useState([])
+  const [contribLoaded, setContribLoaded] = useState(false)
+
+  function openContributors() {
+    setHomeTab('contributors')
+    if (!contribLoaded) {
+      fetch('/api/auth/top-contributors')
+        .then(r => r.json())
+        .then(d => { setContributors(d); setContribLoaded(true) })
+    }
+  }
+
   // Debounce search input — reset page on change
   useEffect(() => {
     const t = setTimeout(() => { setDebSearch(search); setPage(1) }, 300)
@@ -145,14 +158,37 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Tab bar */}
+      <div style={{ background: '#fff', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex', gap: 0 }}>
+          {[['parks', '🌲 Parks'], ['contributors', '🏆 Top Contributors']].map(([t, label]) => (
+            <button key={t}
+              onClick={() => t === 'contributors' ? openContributors() : setHomeTab('parks')}
+              style={{
+                padding: '12px 18px', fontWeight: 600, fontSize: '0.88rem',
+                background: 'none', border: 'none', cursor: 'pointer',
+                borderBottom: `2px solid ${homeTab === t ? 'var(--green-mid)' : 'transparent'}`,
+                color: homeTab === t ? 'var(--green-mid)' : 'var(--text-muted)',
+                marginBottom: -1,
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Grid */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: 24 }}>
-        {error && (
+        {homeTab === 'contributors' && (
+          <TopContributors contributors={contributors} loaded={contribLoaded} />
+        )}
+
+        {homeTab === 'parks' && error && (
           <div style={{ textAlign: 'center', padding: '80px 20px' }}>
             ⚠️ Could not load parks: {error}
           </div>
         )}
-        {!error && (
+        {homeTab === 'parks' && !error && (
           <>
             <div
               style={{
@@ -164,19 +200,14 @@ export default function Home() {
                 pointerEvents: loading ? 'none' : 'auto',
               }}
             >
-              {/* Initial load — skeleton cards */}
               {loading && parks.length === 0 && (
                 Array.from({ length: PAGE_SIZE }, (_, i) => <ParkSkeleton key={i} />)
               )}
-
-              {/* No results */}
               {!loading && parks.length === 0 && (
                 <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
                   No parks match your search.
                 </div>
               )}
-
-              {/* Park cards (shown during refetch too, just dimmed) */}
               {parks.map(p => <ParkCard key={p.reference} park={p} />)}
             </div>
             {!loading && <Pagination page={page} total={totalPages} onChange={go} />}
@@ -188,6 +219,84 @@ export default function Home() {
         Park data from <a href="https://pota.app" target="_blank" rel="noreferrer">Parks on the Air®</a>
       </footer>
     </>
+  )
+}
+
+function TopContributors({ contributors, loaded }) {
+  const medals = ['🥇', '🥈', '🥉']
+
+  if (!loaded) return (
+    <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
+      <span className="spinner" />
+    </div>
+  )
+
+  if (!contributors.length) return (
+    <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
+      No reports submitted yet. Be the first!
+    </div>
+  )
+
+  return (
+    <div style={{ maxWidth: 560, margin: '0 auto', padding: '8px 0 40px' }}>
+      <div className="card">
+        <div className="card-header">
+          <h2>Top Contributors</h2>
+          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>By activation reports submitted</span>
+        </div>
+        <div className="card-body" style={{ padding: 0 }}>
+          {contributors.map((c, i) => (
+            <Link key={c.callsign} to={`/profile/${encodeURIComponent(c.callsign)}`}
+              style={{ textDecoration: 'none', color: 'inherit' }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 16,
+                padding: '14px 20px',
+                borderBottom: i < contributors.length - 1 ? '1px solid var(--border)' : 'none',
+                transition: 'background 0.1s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--green-muted)'}
+              onMouseLeave={e => e.currentTarget.style.background = ''}>
+
+                {/* Rank */}
+                <div style={{ width: 32, textAlign: 'center', flexShrink: 0 }}>
+                  {i < 3
+                    ? <span style={{ fontSize: '1.4rem' }}>{medals[i]}</span>
+                    : <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-muted)' }}>#{i + 1}</span>
+                  }
+                </div>
+
+                {/* Avatar */}
+                <div style={{
+                  width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+                  background: 'var(--green-mid)', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'SF Mono, Menlo, Consolas, monospace', fontWeight: 700, fontSize: '0.9rem',
+                }}>
+                  {c.callsign.slice(0, 2)}
+                </div>
+
+                {/* Callsign */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'SF Mono, Menlo, Consolas, monospace', fontWeight: 700, fontSize: '1rem', color: 'var(--green-dark)' }}>
+                    {c.callsign}
+                  </div>
+                </div>
+
+                {/* Count */}
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--green-mid)', lineHeight: 1 }}>
+                    {c.report_count}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.04em' }}>
+                    {c.report_count === 1 ? 'report' : 'reports'}
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
 

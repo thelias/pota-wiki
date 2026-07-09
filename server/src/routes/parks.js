@@ -275,6 +275,77 @@ router.post('/:ref/sync', async (req, res, next) => {
   }
 })
 
+/**
+ * GET /api/parks/:ref/summary
+ * Aggregated stats from all activation reports for a park.
+ */
+router.get('/:ref/summary', async (req, res, next) => {
+  try {
+    const ref = req.params.ref.toUpperCase()
+
+    // Main aggregation
+    const { rows: [s] } = await pool.query(`
+      SELECT
+        COUNT(*)::int AS total,
+
+        -- Cell service (exclude 'unknown' from denominator)
+        COUNT(*) FILTER (WHERE cell_service = 'yes')::int          AS cell_yes,
+        COUNT(*) FILTER (WHERE cell_service = 'no')::int           AS cell_no,
+        COUNT(*) FILTER (WHERE cell_service IN ('yes','no'))::int   AS cell_total,
+
+        -- Bathrooms
+        COUNT(*) FILTER (WHERE bathrooms = 'yes')::int             AS bath_yes,
+        COUNT(*) FILTER (WHERE bathrooms = 'no')::int              AS bath_no,
+        COUNT(*) FILTER (WHERE bathrooms IN ('yes','no'))::int      AS bath_total,
+
+        -- QRM (numeric 1–5)
+        MIN(CASE qrm_level
+          WHEN 'very-low' THEN 1 WHEN 'low' THEN 2 WHEN 'normal' THEN 3
+          WHEN 'high' THEN 4 WHEN 'very-high' THEN 5 END)          AS qrm_min,
+        MAX(CASE qrm_level
+          WHEN 'very-low' THEN 1 WHEN 'low' THEN 2 WHEN 'normal' THEN 3
+          WHEN 'high' THEN 4 WHEN 'very-high' THEN 5 END)          AS qrm_max,
+        ROUND(AVG(CASE qrm_level
+          WHEN 'very-low' THEN 1 WHEN 'low' THEN 2 WHEN 'normal' THEN 3
+          WHEN 'high' THEN 4 WHEN 'very-high' THEN 5 END), 1)      AS qrm_avg,
+        COUNT(*) FILTER (WHERE qrm_level IS NOT NULL)::int         AS qrm_total,
+
+        -- Parking availability
+        COUNT(*) FILTER (WHERE parking_availability = 'good')::int AS parking_good,
+        COUNT(*) FILTER (WHERE parking_availability = 'okay')::int AS parking_okay,
+        COUNT(*) FILTER (WHERE parking_availability = 'bad')::int  AS parking_bad,
+        COUNT(*) FILTER (WHERE parking_availability IS NOT NULL)::int AS parking_total
+
+      FROM activation_reports
+      WHERE park_reference = $1
+    `, [ref])
+
+    // Busyness patterns — grouped by weekday/weekend × time of day
+    const { rows: patterns } = await pool.query(`
+      SELECT
+        CASE WHEN EXTRACT(DOW FROM activation_date) IN (0, 6)
+          THEN 'weekend' ELSE 'weekday' END                        AS day_type,
+        time_of_day,
+        ROUND(AVG(CASE busyness
+          WHEN 'quiet' THEN 1 WHEN 'moderate' THEN 2 WHEN 'busy' THEN 3
+          END), 2)                                                  AS avg_busyness,
+        COUNT(*)::int                                              AS sample_size
+      FROM activation_reports
+      WHERE park_reference = $1
+        AND busyness IS NOT NULL
+        AND time_of_day IS NOT NULL
+        AND activation_date IS NOT NULL
+      GROUP BY day_type, time_of_day
+      HAVING COUNT(*) >= 2
+      ORDER BY day_type, time_of_day
+    `, [ref])
+
+    res.json({ ...s, patterns })
+  } catch (err) {
+    next(err)
+  }
+})
+
 // ── Seed helper ──────────────────────────────────────────────────────────────
 
 async function seedLocations(locations = US_LOCATIONS) {
