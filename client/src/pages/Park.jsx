@@ -403,7 +403,7 @@ export default function Park() {
               {park.first_activation_date && (
                 <div className="info-item">
                   <label>First Activation</label>
-                  <div className="val">{new Date(park.first_activation_date.replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                  <div className="val">{new Date(park.first_activation_date.slice(0, 10).replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                 </div>
               )}
               {park.access_methods && (

@@ -146,6 +146,7 @@ export default function Auth() {
                 </div>
               )}
             </form>
+            {tab === 'login' && <ForgotPassword />}
           </div>
         </div>
       </div>
@@ -154,5 +155,66 @@ export default function Auth() {
         <Link to="/">← Back to POTA Wiki</Link>
       </footer>
     </>
+  )
+}
+
+function ForgotPassword() {
+  const [open,    setOpen]    = useState(false)
+  const [email,   setEmail]   = useState('')
+  const [loading, setLoading] = useState(false)
+  const [sent,    setSent]    = useState(false)
+
+  const [err, setErr] = useState(null)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setLoading(true)
+    setErr(null)
+    try {
+      const res  = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setErr(data.error || 'Something went wrong.'); return }
+      setSent(true)
+    } catch {
+      setErr('Network error. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!open) return (
+    <button type="button" onClick={() => setOpen(true)}
+      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.85rem', padding: 0 }}>
+      Forgot password?
+    </button>
+  )
+
+  return (
+    <div style={{ marginTop: 16, padding: 16, background: 'var(--green-muted)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', width: '100%' }}>
+      {sent ? (
+        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--green-dark)' }}>
+          If that email is registered, a reset link is on its way.
+        </p>
+      ) : (
+        <form onSubmit={handleSubmit}>
+          <label style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+            Enter your account email
+          </label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="you@example.com" required
+              style={{ flex: 1, fontSize: '0.9rem' }} />
+            <button type="submit" className="btn-green" disabled={loading} style={{ whiteSpace: 'nowrap' }}>
+              {loading ? '…' : 'Send link'}
+            </button>
+          </div>
+          {err && <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'var(--red, #c0392b)' }}>{err}</p>}
+        </form>
+      )}
+    </div>
   )
 }

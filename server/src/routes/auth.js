@@ -9,8 +9,12 @@
 
 import { Router } from 'express'
 import bcrypt from 'bcrypt'
+import { randomBytes } from 'crypto'
+import { Resend } from 'resend'
 import pool from '../db/pool.js'
 import { signToken, requireAuth, COOKIE_OPTS } from '../middleware/auth.js'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 const router = Router()
 
@@ -141,6 +145,88 @@ router.get('/my-reports', requireAuth, async (req, res, next) => {
       [req.user.userId]
     )
     res.json(rows)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ── Forgot password ───────────────────────────────────────────────────────────
+
+router.post('/forgot-password', async (req, res, next) => {
+  // Always respond with 200 so we don't leak whether an email exists
+  try {
+    const email = (req.body.email || '').toLowerCase().trim()
+    if (!email) return res.json({ ok: true })
+
+    const { rows } = await pool.query('SELECT id, callsign FROM users WHERE email = $1', [email])
+    if (!rows.length) return res.json({ ok: true })
+
+    const user  = rows[0]
+    const token = randomBytes(32).toString('hex')
+    const expiry = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+
+    // Invalidate any existing unused tokens for this user
+    await pool.query(
+      'UPDATE password_reset_tokens SET used_at = now() WHERE user_id = $1 AND used_at IS NULL',
+      [user.id]
+    )
+    await pool.query(
+      'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
+      [user.id, token, expiry]
+    )
+
+    const resetUrl = `${process.env.ALLOWED_ORIGIN || 'http://localhost:5173'}/reset-password?token=${token}`
+
+    const { data, error } = await resend.emails.send({
+      from:    process.env.RESEND_FROM_EMAIL,
+      to:      email,
+      subject: 'POTA Wiki — reset your password',
+      html: `
+        <p>Hi ${user.callsign},</p>
+        <p>Click the link below to reset your POTA Wiki password. It expires in 1 hour.</p>
+        <p><a href="${resetUrl}">${resetUrl}</a></p>
+        <p>If you didn't request this, you can safely ignore it.</p>
+        <p>73,<br>POTA Wiki</p>
+      `,
+    })
+
+    if (error) {
+      console.error('Resend error:', error)
+      return res.status(502).json({ error: 'Failed to send email. Please try again.' })
+    }
+
+    console.log('Password reset email sent:', data?.id)
+    res.json({ ok: true })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ── Reset password ────────────────────────────────────────────────────────────
+
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { token, password } = req.body
+    if (!token || !password || password.length < 8)
+      return res.status(400).json({ error: 'Invalid request.' })
+
+    const { rows } = await pool.query(
+      `SELECT t.id, t.user_id FROM password_reset_tokens t
+       WHERE t.token = $1
+         AND t.expires_at > now()
+         AND t.used_at IS NULL`,
+      [token]
+    )
+    if (!rows.length)
+      return res.status(400).json({ error: 'This reset link is invalid or has expired.' })
+
+    const { id: tokenId, user_id } = rows[0]
+    const hash = await bcrypt.hash(password, 12)
+
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, user_id])
+    await pool.query('UPDATE password_reset_tokens SET used_at = now() WHERE id = $1', [tokenId])
+
+    res.json({ ok: true })
   } catch (err) {
     next(err)
   }
