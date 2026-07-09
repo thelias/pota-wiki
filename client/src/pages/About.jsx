@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom'
 import Nav from '../components/Nav.jsx'
+import Footer from '../components/Footer.jsx'
 
 export default function About() {
   return (
@@ -8,7 +8,7 @@ export default function About() {
 
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '40px 24px 80px' }}>
 
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: 6 }}>About POTA Wiki</h1>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: 6 }}>POTA Wiki</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: 40 }}>
           The purpose of POTA Wiki is to provide a place for activators to share information and data on the parks they activate not readily available from other channels.
           <br />
@@ -31,6 +31,9 @@ export default function About() {
           <br/>
           <br/>
           If you want to submit an activation report: make an account, find your park and fill out the activation report form.
+          <br/>
+          <br/>
+          <a href="https://github.com/thelias/pota-wiki/issues/new" target="_blank" rel="noreferrer">Report a bug</a>
         </Section>
 
         <Section title="Contact & Credits">
@@ -45,9 +48,7 @@ export default function About() {
 
       </div>
 
-      <footer>
-        Park data from <a href="https://pota.app" target="_blank" rel="noreferrer">Parks on the Air®</a>
-      </footer>
+      <Footer />
     </>
   )
 }

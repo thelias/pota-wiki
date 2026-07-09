@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import Footer from '../components/Footer.jsx'
 
 const STATE_NAMES = {
   'US-AL': 'Alabama',        'US-AK': 'Alaska',         'US-AZ': 'Arizona',
@@ -215,9 +216,7 @@ export default function Home() {
         )}
       </div>
 
-      <footer>
-        Park data from <a href="https://pota.app" target="_blank" rel="noreferrer">Parks on the Air®</a>
-      </footer>
+      <Footer />
     </>
   )
 }

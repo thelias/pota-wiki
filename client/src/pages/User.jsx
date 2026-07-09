@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav.jsx'
+import Footer from '../components/Footer.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const QRM_LABELS = {
@@ -82,9 +83,7 @@ export default function User() {
         </div>
       </div>
 
-      <footer>
-        <Link to="/">← All Parks</Link>
-      </footer>
+      <Footer back={{ to: '/', label: '← All Parks' }} />
     </>
   )
 }

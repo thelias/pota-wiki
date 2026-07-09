@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav.jsx'
 import Pagination from '../components/Pagination.jsx'
+import Footer from '../components/Footer.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const QRM_LABELS = {
@@ -669,9 +670,7 @@ export default function Park() {
         </div>
       </div>
 
-      <footer>
-        Park data from <a href="https://pota.app" target="_blank" rel="noreferrer">Parks on the Air®</a>
-      </footer>
+      <Footer />
     </>
   )
 }

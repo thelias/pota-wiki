@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import Nav from '../components/Nav.jsx'
+import Footer from '../components/Footer.jsx'
 
 export default function Auth() {
   const [params]        = useSearchParams()
@@ -151,9 +152,7 @@ export default function Auth() {
         </div>
       </div>
 
-      <footer>
-        <Link to="/">← Back to POTA Wiki</Link>
-      </footer>
+      <Footer back={{ to: '/', label: '← Back to POTA Wiki' }} />
     </>
   )
 }

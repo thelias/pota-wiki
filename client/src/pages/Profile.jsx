@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Nav from '../components/Nav.jsx'
 import Pagination from '../components/Pagination.jsx'
+import Footer from '../components/Footer.jsx'
 
 const QRM_LABELS = {
   'very-low':  { label: 'Very Low',  cls: 'qrm-very-low'  },
@@ -152,9 +153,7 @@ export default function Profile() {
         </div>
       </div>
 
-      <footer>
-        <Link to="/">← All Parks</Link>
-      </footer>
+      <Footer back={{ to: '/', label: '← All Parks' }} />
     </>
   )
 }
