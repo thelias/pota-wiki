@@ -10,7 +10,6 @@ export default function Auth() {
   const [fields, setFields] = useState({ callsign: '', email: '', password: '' })
   const [msg, setMsg]   = useState(null) // { text, type }
   const [loading, setLoading] = useState(false)
-  const [csStatus, setCsStatus] = useState(null) // null | 'checking' | 'ok' | 'error'
   const { user, login } = useAuth()
   const navigate        = useNavigate()
   const returnTo        = params.get('return') || '/'
@@ -20,22 +19,7 @@ export default function Auth() {
     if (user) navigate(returnTo, { replace: true })
   }, [user])
 
-  const set = (k) => (e) => {
-    setFields(f => ({ ...f, [k]: e.target.value }))
-    if (k === 'callsign') setCsStatus(null)
-  }
-
-  async function checkCallsign() {
-    const cs = fields.callsign.trim().toUpperCase()
-    if (!cs || tab !== 'signup') return
-    setCsStatus('checking')
-    try {
-      const res = await fetch(`/api/auth/check-callsign?callsign=${encodeURIComponent(cs)}`)
-      setCsStatus(res.ok ? 'ok' : 'error')
-    } catch {
-      setCsStatus(null)
-    }
-  }
+  const set = (k) => (e) => setFields(f => ({ ...f, [k]: k === 'callsign' ? e.target.value.toUpperCase() : e.target.value }))
 
   async function submit(e) {
     e.preventDefault()
@@ -51,6 +35,16 @@ export default function Auth() {
 
     setLoading(true)
     try {
+      if (tab === 'signup') {
+        const cs = callsign.trim().toUpperCase()
+        const check = await fetch(`/api/auth/check-callsign?callsign=${encodeURIComponent(cs)}`)
+        if (!check.ok) {
+          setMsg({ text: 'Callsign not found on POTA. You must have a POTA account to register.', type: 'error' })
+          setLoading(false)
+          return
+        }
+      }
+
       const body = tab === 'login'
         ? { callsign, password }
         : { callsign, email, password }
@@ -96,27 +90,12 @@ export default function Auth() {
             <form onSubmit={submit}>
               <div className="form-row">
                 <label>Callsign</label>
-                <div style={{ position: 'relative' }}>
-                  <input type="text" placeholder="W7ABC" maxLength={14}
-                    value={fields.callsign}
-                    onChange={set('callsign')}
-                    onBlur={checkCallsign}
-                    style={{ textTransform: 'uppercase', paddingRight: csStatus ? '2rem' : undefined, width: '100%' }} />
-                  {csStatus === 'checking' && (
-                    <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>…</span>
-                  )}
-                  {csStatus === 'ok' && (
-                    <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--green-mid)', fontWeight: 700 }}>✓</span>
-                  )}
-                  {csStatus === 'error' && (
-                    <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#e53e3e', fontWeight: 700 }}>✗</span>
-                  )}
-                </div>
-                {tab === 'signup' && csStatus !== 'error' && (
-                  <div className="field-hint">This will be your username. Must match your POTA callsign.</div>
-                )}
-                {tab === 'signup' && csStatus === 'error' && (
-                  <div className="field-hint" style={{ color: '#e53e3e' }}>Callsign not found on POTA. You must have a POTA account to register.</div>
+                <input type="text" placeholder="W7ABC" maxLength={14}
+                  value={fields.callsign}
+                  onChange={set('callsign')}
+                  style={{ width: '100%' }} />
+                {tab === 'signup' && (
+                  <div className="field-hint">This will be your username. You must have an active POTA account to register.</div>
                 )}
               </div>
 
@@ -136,7 +115,7 @@ export default function Auth() {
               </div>
 
               <button type="submit" className="btn-green" disabled={loading || (tab === 'signup' && (
-                !fields.callsign.trim() || !fields.email.trim() || fields.password.length < 8 || csStatus !== 'ok'
+                !fields.callsign.trim() || !fields.email.trim() || fields.password.length < 8
               ))}>
                 {loading ? (tab === 'login' ? 'Logging in…' : 'Creating account…') : (tab === 'login' ? 'Log In' : 'Create Account')}
               </button>
