@@ -16,7 +16,7 @@ export default function Help() {
         <Section title="Browsing Parks">
           The home page lists parks across the US. You can find a park three ways:
           <ul style={{ marginLeft: '1.5rem', marginTop: '0.5rem', lineHeight: 1.8 }}>
-            <li><strong>Search</strong> — type a park name or reference number (e.g. K-0813) into the search bar</li>
+            <li><strong>Search</strong> — type a park name or reference number (e.g. US-13352) into the search bar</li>
             <li><strong>Filter by state</strong> — use the state dropdown to narrow to a specific location</li>
             <li><strong>Near me</strong> — click "Near me" to sort parks by proximity to your current location</li>
           </ul>

@@ -8,7 +8,7 @@ POTA Wiki is a community knowledge base for Parks on the Air activators. It coll
 
 The home page lists parks across the US. You can find a park three ways:
 
-- **Search** — type a park name or reference number (e.g. `K-0813`) into the search bar
+- **Search** — type a park name or reference number (e.g. `US-13352`) into the search bar
 - **Filter by state** — use the state dropdown to narrow to a specific location
 - **Near me** — click "Near me" to sort parks by proximity to your current location
 
