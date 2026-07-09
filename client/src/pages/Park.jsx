@@ -282,7 +282,7 @@ export default function Park() {
         </div>
       )}
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 24px 40px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 12px 48px' }}>
 
         {/* ── Park detail card ──────────────────────────────── */}
         <div className="card">
