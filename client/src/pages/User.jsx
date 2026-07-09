@@ -24,7 +24,7 @@ export default function User() {
     <>
       <Nav crumb="My Profile" />
 
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px 24px 48px' }}>
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px 12px 48px' }}>
         {/* Profile header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
           <div style={{
