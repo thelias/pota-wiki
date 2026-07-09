@@ -21,30 +21,39 @@ const router = Router({ mergeParams: true })
 
 router.get('/', optionalAuth, async (req, res, next) => {
   try {
-    const ref = req.params.ref.toUpperCase()
+    const ref    = req.params.ref.toUpperCase()
+    const page   = Math.max(1, parseInt(req.query.page)  || 1)
+    const limit  = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10))
+    const offset = (page - 1) * limit
+
+    const { rows: [{ count }] } = await pool.query(
+      'SELECT COUNT(*) FROM activation_reports WHERE park_reference = $1', [ref]
+    )
+    const total      = parseInt(count)
+    const totalPages = Math.ceil(total / limit) || 1
 
     const { rows: reports } = await pool.query(
       `SELECT * FROM activation_reports
        WHERE park_reference = $1
-       ORDER BY created_at DESC`,
-      [ref]
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [ref, limit, offset]
     )
 
     if (reports.length) {
       const ids = reports.map(r => r.id)
       const { rows: photos } = await pool.query(
-        `SELECT * FROM report_photos WHERE report_id = ANY($1)`,
-        [ids]
+        `SELECT * FROM report_photos WHERE report_id = ANY($1)`, [ids]
       )
-      const photosByReport = {}
+      const byReport = {}
       photos.forEach(p => {
-        if (!photosByReport[p.report_id]) photosByReport[p.report_id] = []
-        photosByReport[p.report_id].push(p)
+        if (!byReport[p.report_id]) byReport[p.report_id] = []
+        byReport[p.report_id].push(p)
       })
-      reports.forEach(r => { r.photos = photosByReport[r.id] || [] })
+      reports.forEach(r => { r.photos = byReport[r.id] || [] })
     }
 
-    res.json(reports)
+    res.json({ reports, total, page, totalPages, limit })
   } catch (err) {
     next(err)
   }
@@ -270,28 +279,31 @@ export const editReport = async (req, res, next) => {
 // Mounted separately at DELETE /api/reports/:id
 
 export const deleteReport = async (req, res, next) => {
+  const client = await pool.connect()
   try {
     const id = parseInt(req.params.id)
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid report ID' })
 
-    const { rows } = await pool.query(
+    const { rows } = await client.query(
       'SELECT user_id FROM activation_reports WHERE id = $1', [id]
     )
     if (!rows.length) return res.status(404).json({ error: 'Report not found' })
     if (rows[0].user_id !== req.user.userId)
       return res.status(403).json({ error: 'You can only delete your own reports' })
 
-    const { rows: photos } = await pool.query(
+    const { rows: photos } = await client.query(
       'SELECT filename FROM report_photos WHERE report_id = $1', [id]
     )
 
-    await pool.query('DELETE FROM activation_reports WHERE id = $1', [id])
-    await pool.query(
+    await client.query('BEGIN')
+    await client.query('DELETE FROM activation_reports WHERE id = $1', [id])
+    await client.query(
       'UPDATE users SET report_count = GREATEST(0, report_count - 1) WHERE id = $1',
       [req.user.userId]
     )
+    await client.query('COMMIT')
 
-    // Delete photos from S3 (filename stores the S3 key)
+    // S3 deletes after commit — orphaned objects are harmless vs. inconsistent DB
     await Promise.allSettled(
       photos.map(p => s3.send(new DeleteObjectCommand({
         Bucket: process.env.S3_BUCKET,
@@ -301,7 +313,10 @@ export const deleteReport = async (req, res, next) => {
 
     res.json({ deleted: id })
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {})
     next(err)
+  } finally {
+    client.release()
   }
 }
 

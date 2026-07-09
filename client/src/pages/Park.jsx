@@ -1,91 +1,18 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav.jsx'
-import Pagination from '../components/Pagination.jsx'
 import Footer from '../components/Footer.jsx'
+import Pagination from '../components/Pagination.jsx'
+import MultiSelect from '../components/MultiSelect.jsx'
+import ScaleToggle from '../components/ScaleToggle.jsx'
+import BoolToggle from '../components/BoolToggle.jsx'
+import LinkBtn from '../components/LinkBtn.jsx'
+import ReportItem from '../components/ReportItem.jsx'
+import ParkSummary from '../components/ParkSummary.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { QRM_LABELS, MODES, BANDS, EMPTY_FORM } from '../constants.js'
 
-const QRM_LABELS = {
-  'very-low':  { label: 'Very Low',  cls: 'qrm-very-low'  },
-  'low':       { label: 'Low',       cls: 'qrm-low'       },
-  'normal':    { label: 'Normal',    cls: 'qrm-normal'     },
-  'high':      { label: 'High',      cls: 'qrm-high'       },
-  'very-high': { label: 'Very High', cls: 'qrm-very-high'  },
-}
-
-const MODES = ['CW', 'FT4', 'FT8', 'SSB', 'DATA', 'PHONE', 'Other']
-const BANDS = ['160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m', '1.25m', '70cm', '33cm', '23cm']
-
-const EMPTY_FORM = {
-  activation_date: '', cell_service: 'unknown', bathrooms: 'unknown',
-  qrm_level: 'normal', parking: '', setup_locations: '', general_comments: '',
-  cell_provider: '', antenna: '', mode: [], bands: [], power_watts: '',
-  parking_availability: '', busyness: '', time_of_day: '',
-}
-
-const QRM_NUM = { 'very-low': 1, 'low': 2, 'normal': 3, 'high': 4, 'very-high': 5 }
-const QRM_NAMES = { 1: 'Very Low', 2: 'Low', 3: 'Normal', 4: 'High', 5: 'Very High' }
-
-function MultiSelect({ options, value, onChange, placeholder }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef(null)
-  useEffect(() => {
-    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-  const toggle = opt => onChange(value.includes(opt) ? value.filter(x => x !== opt) : [...value, opt])
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <div onClick={() => setOpen(o => !o)} style={{
-        border: '1px solid var(--border)', borderRadius: 6, padding: '6px 10px',
-        cursor: 'pointer', display: 'flex', flexWrap: 'wrap', gap: 4, minHeight: 38,
-        alignItems: 'center', background: 'var(--white)',
-      }}>
-        {value.length === 0
-          ? <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', flex: 1 }}>{placeholder}</span>
-          : value.map(v => (
-              <span key={v} style={{
-                background: 'var(--green-muted)', color: 'var(--green-mid)',
-                borderRadius: 3, padding: '1px 6px', fontSize: '0.8rem', fontWeight: 600,
-              }}>
-                {v}
-                <span onClick={e => { e.stopPropagation(); toggle(v) }}
-                  style={{ marginLeft: 5, cursor: 'pointer', opacity: 0.7 }}>×</span>
-              </span>
-            ))
-        }
-        <span style={{ marginLeft: 'auto', paddingLeft: 6, color: 'var(--text-muted)', fontSize: '0.75rem' }}>▾</span>
-      </div>
-      {open && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, zIndex: 50,
-          background: 'var(--white)', border: '1px solid var(--border)',
-          borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-          maxHeight: 200, overflowY: 'auto',
-        }}>
-          {options.map(opt => (
-            <div key={opt} onClick={() => toggle(opt)} style={{
-              padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-              fontSize: '0.88rem', userSelect: 'none',
-              background: value.includes(opt) ? 'var(--green-muted)' : 'transparent',
-            }}>
-              <span style={{
-                width: 15, height: 15, border: `1px solid ${value.includes(opt) ? 'var(--green-mid)' : 'var(--border)'}`,
-                borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: value.includes(opt) ? 'var(--green-mid)' : 'transparent',
-                color: '#fff', fontSize: '0.65rem', flexShrink: 0,
-              }}>
-                {value.includes(opt) ? '✓' : ''}
-              </span>
-              {opt}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
+const REPORTS_PER_PAGE = 10
 
 export default function Park() {
   const { ref }   = useParams()
@@ -93,12 +20,16 @@ export default function Park() {
   const navigate  = useNavigate()
 
   const [park,    setPark]    = useState(null)
-  const [reports, setReports] = useState([])
   const [pLoading, setPLoading] = useState(true)
-  const [rLoading, setRLoading] = useState(true)
   const [error,   setError]   = useState(null)
 
   const [summary,   setSummary]   = useState(null)
+
+  const [reports,    setReports]    = useState([])
+  const [rTotal,     setRTotal]     = useState(0)
+  const [rTotalPages, setRTotalPages] = useState(1)
+  const [rPage,      setRPage]      = useState(1)
+  const [rLoading,   setRLoading]   = useState(true)
 
   const [form,      setForm]      = useState(EMPTY_FORM)
   const [photos,    setPhotos]    = useState([])
@@ -107,18 +38,21 @@ export default function Park() {
   const [submitMsg, setSubmitMsg] = useState(null)
   const fileRef = useRef(null)
 
-  const [lightbox,  setLightbox]  = useState(null) // url
+  const [lightbox,   setLightbox]   = useState(null)
   const [deletingId, setDeletingId] = useState(null)
-  const [rPage, setRPage] = useState(1)
-  const REPORTS_PER_PAGE = 5
 
   // Edit mode
-  const [editingReport,   setEditingReport]   = useState(null)  // null = create, report obj = edit
-  const [existingPhotos,  setExistingPhotos]  = useState([])    // photos already on the report
-  const [removedPhotoIds, setRemovedPhotoIds] = useState([])    // IDs to delete on save
+  const [editingReport,   setEditingReport]   = useState(null)
+  const [existingPhotos,  setExistingPhotos]  = useState([])
+  const [removedPhotoIds, setRemovedPhotoIds] = useState([])
   const formRef = useRef(null)
 
-  // Load park
+  const MAX_TOTAL_BYTES = 56 * 1024 * 1024
+  const [photoError, setPhotoError] = useState(null)
+
+  // ── Data fetching ──────────────────────────────────────────────────────────
+
+  // Load park detail
   useEffect(() => {
     setPLoading(true)
     fetch(`/api/parks/${encodeURIComponent(ref)}`)
@@ -128,27 +62,43 @@ export default function Park() {
   }, [ref])
 
   // Load summary
-  useEffect(() => {
+  function refreshSummary() {
     fetch(`/api/parks/${encodeURIComponent(ref)}/summary`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setSummary(d) })
       .catch(() => {})
-  }, [ref])
+  }
+  useEffect(() => { refreshSummary() }, [ref]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load reports
-  const loadReports = useCallback(() => {
+  // Fetch a specific page of reports
+  function fetchReports(page) {
     setRLoading(true)
-    fetch(`/api/parks/${encodeURIComponent(ref)}/reports`)
-      .then(r => r.ok ? r.json() : [])
-      .then(d => { setReports(d); setRLoading(false); setRPage(1) })
+    fetch(`/api/parks/${encodeURIComponent(ref)}/reports?page=${page}&limit=${REPORTS_PER_PAGE}`)
+      .then(r => r.ok ? r.json() : { reports: [], total: 0, totalPages: 1 })
+      .then(({ reports, total, totalPages }) => {
+        setReports(reports)
+        setRTotal(total)
+        setRTotalPages(totalPages)
+        setRLoading(false)
+      })
       .catch(() => setRLoading(false))
-  }, [ref])
-  useEffect(() => { loadReports() }, [loadReports])
+  }
 
-  const MAX_TOTAL_BYTES = 56 * 1024 * 1024 // 56 MB
-  const [photoError, setPhotoError] = useState(null)
+  // Reset to page 1 when park changes
+  useEffect(() => {
+    setRPage(1)
+    fetchReports(1)
+  }, [ref]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Photo handling
+  function handlePageChange(newPage) {
+    setRPage(newPage)
+    fetchReports(newPage)
+    // Scroll to the reports card
+    document.querySelector('.reports-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  // ── Photo handling ─────────────────────────────────────────────────────────
+
   function addPhotos(files) {
     const newFiles = Array.from(files).slice(0, 4 - photos.length)
     const combined = [...photos, ...newFiles]
@@ -161,6 +111,7 @@ export default function Park() {
     setPhotos(prev => [...prev, ...newFiles])
     setPreviews(prev => [...prev, ...newFiles.map(f => URL.createObjectURL(f))])
   }
+
   function removePhoto(i) {
     URL.revokeObjectURL(previews[i])
     setPhotos(p => p.filter((_, idx) => idx !== i))
@@ -168,7 +119,13 @@ export default function Park() {
     setPhotoError(null)
   }
 
-  // Submit / update report
+  // Revoke object URLs on unmount
+  useEffect(() => {
+    return () => { previews.forEach(u => URL.revokeObjectURL(u)) }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Submit / edit report ───────────────────────────────────────────────────
+
   async function handleSubmit(e) {
     e.preventDefault()
     if (!user) return navigate(`/auth?return=/park/${encodeURIComponent(ref)}`)
@@ -178,7 +135,7 @@ export default function Park() {
     const fd = new FormData()
     Object.entries(form).forEach(([k, v]) => {
       if (k === 'mode' || k === 'bands') return
-      if (v !== '') fd.append(k, v)  // skip empty optional fields
+      if (v !== '') fd.append(k, v)
     })
     form.mode.forEach(m => fd.append('mode', m))
     form.bands.forEach(b => fd.append('bands', b))
@@ -193,7 +150,7 @@ export default function Park() {
       : `/api/parks/${encodeURIComponent(ref)}/reports`
 
     try {
-      const res = await fetch(url, { method: isEdit ? 'PUT' : 'POST', body: fd })
+      const res  = await fetch(url, { method: isEdit ? 'PUT' : 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) { setSubmitMsg({ type: 'error', text: data.error || 'Submission failed.' }); return }
 
@@ -202,13 +159,17 @@ export default function Park() {
       setPhotos([])
       previews.forEach(u => URL.revokeObjectURL(u))
       setPreviews([])
+
       if (isEdit) {
         setEditingReport(null)
         setExistingPhotos([])
         setRemovedPhotoIds([])
+        // Patch the report in the current page without a full reload
         setReports(prev => prev.map(r => r.id === data.id ? data : r))
       } else {
-        loadReports()
+        // New report — go back to page 1 to see it (newest first)
+        setRPage(1)
+        fetchReports(1)
       }
       refreshSummary()
     } catch {
@@ -218,7 +179,8 @@ export default function Park() {
     }
   }
 
-  // Start editing a report
+  // ── Edit mode ──────────────────────────────────────────────────────────────
+
   function startEdit(report) {
     setEditingReport(report)
     setExistingPhotos(report.photos || [])
@@ -229,30 +191,23 @@ export default function Park() {
     setPhotoError(null)
     setSubmitMsg(null)
     setForm({
-      activation_date:  report.activation_date ? report.activation_date.slice(0, 10) : '',
-      cell_service:     report.cell_service  || 'unknown',
-      bathrooms:        report.bathrooms     || 'unknown',
-      qrm_level:        report.qrm_level     || 'normal',
-      parking:          report.parking       || '',
-      setup_locations:  report.setup_locations || '',
-      general_comments: report.general_comments || '',
-      cell_provider:    report.cell_provider || '',
-      antenna:               report.antenna              || '',
-      mode:                  report.mode                || [],
-      bands:                 report.bands               || [],
-      power_watts:           report.power_watts != null ? String(report.power_watts) : '',
-      parking_availability:  report.parking_availability || '',
-      busyness:              report.busyness             || '',
-      time_of_day:           report.time_of_day          || '',
+      activation_date:      report.activation_date ? report.activation_date.slice(0, 10) : '',
+      cell_service:         report.cell_service         || 'unknown',
+      bathrooms:            report.bathrooms            || 'unknown',
+      qrm_level:            report.qrm_level            || 'normal',
+      parking:              report.parking              || '',
+      setup_locations:      report.setup_locations      || '',
+      general_comments:     report.general_comments     || '',
+      cell_provider:        report.cell_provider        || '',
+      antenna:              report.antenna              || '',
+      mode:                 report.mode                 || [],
+      bands:                report.bands                || [],
+      power_watts:          report.power_watts != null ? String(report.power_watts) : '',
+      parking_availability: report.parking_availability || '',
+      busyness:             report.busyness             || '',
+      time_of_day:          report.time_of_day          || '',
     })
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
-  }
-
-  function refreshSummary() {
-    fetch(`/api/parks/${encodeURIComponent(ref)}/summary`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setSummary(d) })
-      .catch(() => {})
   }
 
   function cancelEdit() {
@@ -272,19 +227,28 @@ export default function Park() {
     setExistingPhotos(prev => prev.filter(p => p.id !== id))
   }
 
-  // Delete report
+  // ── Delete report ──────────────────────────────────────────────────────────
+
   async function handleDelete(id) {
     if (!confirm('Delete this report?')) return
     setDeletingId(id)
     try {
       const res = await fetch(`/api/reports/${id}`, { method: 'DELETE' })
-      if (res.ok) { setReports(prev => prev.filter(r => r.id !== id)); refreshSummary() }
+      if (res.ok) {
+        refreshSummary()
+        // If this was the last item on the page and not page 1, go back one
+        const newPage = reports.length === 1 && rPage > 1 ? rPage - 1 : rPage
+        setRPage(newPage)
+        fetchReports(newPage)
+      }
     } finally {
       setDeletingId(null)
     }
   }
 
   const field = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
+
+  // ── Loading / error states ─────────────────────────────────────────────────
 
   if (pLoading) return (
     <>
@@ -320,9 +284,8 @@ export default function Park() {
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 24px 48px' }}>
 
-        {/* ── Park detail card ───────────────────────────── */}
+        {/* ── Park detail card ──────────────────────────────── */}
         <div className="card">
-          {/* Map */}
           {park.latitude && park.longitude ? (
             <div style={{ position: 'relative' }}>
               <iframe
@@ -337,7 +300,6 @@ export default function Park() {
           )}
 
           <div className="card-body">
-            {/* Title row */}
             <div style={{ marginBottom: 16 }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
@@ -362,7 +324,6 @@ export default function Park() {
                 </div>
                 <h1 style={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2 }}>{park.name} {park.park_type}</h1>
               </div>
-              {/* Links */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
                 {park.website && (
                   <LinkBtn href={park.website} color="var(--green-mid)" bg="var(--green-muted)">
@@ -380,7 +341,6 @@ export default function Park() {
               </div>
             </div>
 
-            {/* Stats row */}
             {(park.activations != null || park.attempts != null || park.qsos != null) && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16, padding: '12px 0', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
                 {[
@@ -400,7 +360,6 @@ export default function Park() {
               </div>
             )}
 
-            {/* Info grid */}
             <div className="info-grid">
               {park.park_type && (
                 <div className="info-item">
@@ -454,15 +413,15 @@ export default function Park() {
           </div>
         </div>
 
-        {/* ── Aggregated Summary ────────────────────────── */}
+        {/* ── Activator Insights ────────────────────────────── */}
         {summary && summary.total >= 2 && <ParkSummary summary={summary} />}
 
-        {/* ── Activation Reports ─────────────────────────── */}
-        <div className="card">
+        {/* ── Activation Reports ─────────────────────────────── */}
+        <div className="card reports-card">
           <div className="card-header">
             <h2>Activation Reports</h2>
             <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-              {rLoading ? '…' : `${reports.length} report${reports.length !== 1 ? 's' : ''}`}
+              {rLoading ? '…' : `${rTotal} report${rTotal !== 1 ? 's' : ''}`}
             </span>
           </div>
           <div className="card-body">
@@ -471,26 +430,22 @@ export default function Park() {
                 <span className="spinner" />
               </div>
             )}
-            {!rLoading && reports.length === 0 && (
+            {!rLoading && rTotal === 0 && (
               <div className="empty-placeholder">No reports yet. Be the first to log an activation report!</div>
             )}
-            {!rLoading && (() => {
-              const totalPages = Math.ceil(reports.length / REPORTS_PER_PAGE)
-              const page = Math.min(rPage, totalPages || 1)
-              const pageReports = reports.slice((page - 1) * REPORTS_PER_PAGE, page * REPORTS_PER_PAGE)
-              return (
-                <>
-                  {pageReports.map(r => (
-                    <ReportItem key={r.id} report={r} user={user} onDelete={handleDelete} deletingId={deletingId} onLightbox={setLightbox} onEdit={startEdit} editingId={editingReport?.id} />
-                  ))}
-                  <Pagination page={page} totalPages={totalPages} onPage={setRPage} />
-                </>
-              )
-            })()}
+            {!rLoading && reports.map(r => (
+              <ReportItem key={r.id} report={r} user={user}
+                onDelete={handleDelete} deletingId={deletingId}
+                onLightbox={setLightbox} onEdit={startEdit}
+                editingId={editingReport?.id} />
+            ))}
+            {!rLoading && rTotalPages > 1 && (
+              <Pagination page={rPage} totalPages={rTotalPages} onPage={handlePageChange} />
+            )}
           </div>
         </div>
 
-        {/* ── Submit / Edit Report ──────────────────────── */}
+        {/* ── Submit / Edit Report ──────────────────────────── */}
         <div className="card" ref={formRef}>
           <div className="card-header">
             <h2>{editingReport ? 'Edit Report' : 'Submit Activation Report'}</h2>
@@ -512,7 +467,7 @@ export default function Park() {
             )}
             {(user || user === undefined) && (
               <form onSubmit={handleSubmit} onKeyDown={e => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') e.preventDefault() }}>
-                {/* Callsign (readonly) + Date */}
+                {/* Callsign + Date */}
                 <div className="form-grid">
                   <div className="form-row">
                     <label>Callsign</label>
@@ -525,6 +480,7 @@ export default function Park() {
                     <input type="date" value={form.activation_date} onChange={field('activation_date')} required />
                   </div>
                 </div>
+
                 {/* Parking / Busyness / Time of Day */}
                 <div className="form-grid form-grid-3">
                   <div className="form-row">
@@ -550,11 +506,12 @@ export default function Park() {
                   </div>
                 </div>
 
-                {/* Toggles */}
+                {/* Cell / Bathrooms / QRM */}
                 <div className="form-grid form-grid-3">
                   <div className="form-row">
                     <label>Cell Service</label>
-                    <BoolToggle name="cell_service" value={form.cell_service} onChange={v => setForm(f => ({ ...f, cell_service: v, cell_provider: v === 'unknown' ? '' : f.cell_provider }))} />
+                    <BoolToggle name="cell_service" value={form.cell_service}
+                      onChange={v => setForm(f => ({ ...f, cell_service: v, cell_provider: v === 'unknown' ? '' : f.cell_provider }))} />
                     {(form.cell_service === 'yes' || form.cell_service === 'no') && (
                       <input type="text" placeholder="Provider (e.g. T-Mobile)"
                         value={form.cell_provider} onChange={field('cell_provider')}
@@ -563,7 +520,8 @@ export default function Park() {
                   </div>
                   <div className="form-row">
                     <label>Bathrooms</label>
-                    <BoolToggle name="bathrooms" value={form.bathrooms} onChange={v => setForm(f => ({ ...f, bathrooms: v }))} />
+                    <BoolToggle name="bathrooms" value={form.bathrooms}
+                      onChange={v => setForm(f => ({ ...f, bathrooms: v }))} />
                   </div>
                   <div className="form-row">
                     <label>QRM Level</label>
@@ -572,7 +530,6 @@ export default function Park() {
                     </select>
                   </div>
                 </div>
-
 
                 {/* Mode + Bands + Power */}
                 <div className="form-grid" style={{ marginBottom: 16 }}>
@@ -589,7 +546,7 @@ export default function Park() {
                 </div>
                 <div className="form-row" style={{ marginBottom: 16, maxWidth: 200 }}>
                   <label>Power (watts)</label>
-                  <input style={{minWidth: 60}} type="number" min="0" max="10000" placeholder="e.g. 10"
+                  <input style={{ minWidth: 60 }} type="number" min="0" max="10000" placeholder="e.g. 10"
                     value={form.power_watts} onChange={field('power_watts')} />
                 </div>
 
@@ -628,7 +585,7 @@ export default function Park() {
                   </div>
                 )}
 
-                {/* Photos */}
+                {/* New photos */}
                 <div className="form-row">
                   <label>{editingReport ? 'Add More Photos' : 'Photos'} (max {editingReport ? 4 - existingPhotos.length : 4})</label>
                   <div className="photo-upload-area" onClick={() => photos.length < (editingReport ? 4 - existingPhotos.length : 4) && fileRef.current?.click()}>
@@ -672,324 +629,5 @@ export default function Park() {
 
       <Footer />
     </>
-  )
-}
-
-/* ── Sub-components ──────────────────────────────────────── */
-
-function ReportItem({ report: r, user, onDelete, deletingId, onLightbox, onEdit, editingId }) {
-  const isOwner   = user && r.user_id === user.id
-  const isEditing = editingId === r.id
-  const qrm       = QRM_LABELS[r.qrm_level]
-
-  return (
-    <div className="report-item" style={isEditing ? { outline: '2px solid var(--green-mid)', borderRadius: 'var(--radius)' } : {}}>
-      <div className="report-header">
-        <div>
-          <Link to={`/profile/${encodeURIComponent(r.callsign)}`}
-            onClick={e => e.stopPropagation()}
-            style={{ textDecoration: 'none' }}>
-            <div className="report-callsign" style={{ cursor: 'pointer' }}>{r.callsign}</div>
-          </Link>
-          {r.activation_date && (
-            <div className="report-date">
-              {new Date(r.activation_date.slice(0, 10).replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-            </div>
-          )}
-        </div>
-        {isOwner && (
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button className="btn-delete" style={{ background: 'var(--green-muted)', color: 'var(--green-mid)', borderColor: 'var(--green-light)' }}
-              disabled={!!deletingId}
-              onClick={() => onEdit(r)}>
-              Edit
-            </button>
-            <button className="btn-delete" disabled={deletingId === r.id}
-              onClick={() => onDelete(r.id)}>
-              {deletingId === r.id ? '…' : 'Delete'}
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="report-fields">
-        {r.cell_service && (
-          <div className="rf-item">
-            <label>Cell Service</label>
-            <div className={`rfval ${r.cell_service === 'yes' ? 'bool-yes' : r.cell_service === 'no' ? 'bool-no' : 'bool-unk'}`}>
-              {r.cell_service === 'yes' ? '✓ Yes' : r.cell_service === 'no' ? '✗ No' : 'Unknown'}
-              {r.cell_provider && (
-                <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>· {r.cell_provider}</span>
-              )}
-            </div>
-          </div>
-        )}
-        <Field label="Bathrooms"    value={r.bathrooms}    bool />
-        {r.parking_availability && (
-          <div className="rf-item">
-            <label>Parking</label>
-            <div className={`rfval ${r.parking_availability === 'good' ? 'bool-yes' : r.parking_availability === 'bad' ? 'bool-no' : 'bool-unk'}`}>
-              {{ good: '✓ Good', okay: '~ Okay', bad: '✗ Bad' }[r.parking_availability]}
-            </div>
-          </div>
-        )}
-        {r.busyness && (
-          <div className="rf-item">
-            <label>Busyness</label>
-            <div className={`rfval ${r.busyness === 'quiet' ? 'bool-yes' : r.busyness === 'busy' ? 'bool-no' : 'bool-unk'}`}>
-              {{ quiet: 'Quiet', moderate: 'Moderate', busy: 'Busy' }[r.busyness]}
-            </div>
-          </div>
-        )}
-        {r.time_of_day && (
-          <div className="rf-item">
-            <label>Time of Day</label>
-            <div className="rfval">{{ morning: '🌅 Morning', afternoon: '☀️ Afternoon', evening: '🌇 Evening' }[r.time_of_day]}</div>
-          </div>
-        )}
-        {r.qrm_level && (
-          <div className="rf-item">
-            <label>QRM Level</label>
-            <div className="rfval">
-              <span className={`qrm-badge ${qrm?.cls || ''}`}>{qrm?.label || r.qrm_level}</span>
-            </div>
-          </div>
-        )}
-        {r.mode?.length > 0 && (
-          <div className="rf-item">
-            <label>Mode</label>
-            <div className="rfval" style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-              {r.mode.map(m => (
-                <span key={m} style={{ fontFamily: 'SF Mono, Menlo, Consolas, monospace', fontSize: '0.78rem', fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: 'var(--green-muted)', color: 'var(--green-mid)', border: '1px solid var(--green-light)' }}>{m}</span>
-              ))}
-            </div>
-          </div>
-        )}
-        {r.bands?.length > 0 && (
-          <div className="rf-item">
-            <label>Bands</label>
-            <div className="rfval" style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-              {r.bands.map(b => (
-                <span key={b} style={{ fontFamily: 'SF Mono, Menlo, Consolas, monospace', fontSize: '0.78rem', fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: 'var(--green-muted)', color: 'var(--green-mid)', border: '1px solid var(--green-light)' }}>{b}</span>
-              ))}
-            </div>
-          </div>
-        )}
-        {r.power_watts != null && (
-          <div className="rf-item">
-            <label>Power</label>
-            <div className="rfval">{r.power_watts} W</div>
-          </div>
-        )}
-        {r.antenna && (
-          <div className="rf-item">
-            <label>Antenna</label>
-            <div className="rfval">{r.antenna}</div>
-          </div>
-        )}
-      </div>
-
-      {r.parking && (
-        <div className="report-text-section">
-          <div className="report-text-label">Parking</div>
-          <NL text={r.parking} />
-        </div>
-      )}
-      {r.setup_locations && (
-        <div className="report-text-section">
-          <div className="report-text-label">Setup Locations</div>
-          <NL text={r.setup_locations} />
-        </div>
-      )}
-      {r.general_comments && (
-        <div className="report-text-section">
-          <div className="report-text-label">Comments</div>
-          <NL text={r.general_comments} />
-        </div>
-      )}
-
-      {r.photos?.length > 0 && (
-        <div className="report-photos">
-          {r.photos.map(p => (
-            <img key={p.id} src={p.url} alt={p.original_name || 'Photo'}
-              className="report-photo" loading="lazy" onClick={() => onLightbox(p.url)} />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function NL({ text }) {
-  return text.split('\n').map((line, i, arr) => (
-    <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
-  ))
-}
-
-function Field({ label, value, bool }) {
-  if (!value) return null
-  let display = value
-  let cls     = ''
-  if (bool) {
-    if (value === 'yes')     { display = '✓ Yes';    cls = 'bool-yes' }
-    if (value === 'no')      { display = '✗ No';     cls = 'bool-no'  }
-    if (value === 'unknown') { display = 'Unknown'; cls = 'bool-unk' }
-  }
-  return (
-    <div className="rf-item">
-      <label>{label}</label>
-      <div className={`rfval ${cls}`}>{display}</div>
-    </div>
-  )
-}
-
-function LinkBtn({ href, color, bg, children }) {
-  return (
-    <a href={href} target="_blank" rel="noreferrer" style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      padding: '6px 12px', borderRadius: 'var(--radius)',
-      background: bg, color: color,
-      fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none',
-      border: `1px solid ${color}33`, transition: 'opacity 0.12s, transform 0.1s',
-    }}
-    onMouseEnter={e => Object.assign(e.currentTarget.style, { opacity: '0.8', transform: 'translateY(-1px)' })}
-    onMouseLeave={e => Object.assign(e.currentTarget.style, { opacity: '1', transform: '' })}>
-      {children}
-    </a>
-  )
-}
-
-function ScaleToggle({ name, value, onChange, options, colors }) {
-  return (
-    <div className="bool-group">
-      {options.map(([v, label], i) => (
-        <div key={v} className="bool-opt">
-          <input type="radio" name={name} id={`${name}-${v}`} value={v}
-            checked={value === v} onChange={() => onChange(value === v ? '' : v)} />
-          <label htmlFor={`${name}-${v}`} style={{
-            background: value === v ? colors[i] : undefined,
-            color:      value === v ? '#fff'     : undefined,
-          }}>
-            {label}
-          </label>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function ParkSummary({ summary: s }) {
-  const { total, cell_yes, cell_no, cell_total, bath_yes, bath_no, bath_total,
-          qrm_min, qrm_max, qrm_avg, qrm_total,
-          parking_good, parking_okay, parking_bad, parking_total, patterns } = s
-
-  // Cell service verdict
-  function boolVerdict(yes, no, tot) {
-    if (!tot) return null
-    const pct = yes / tot
-    if (pct >= 0.65) return { label: '✓ Yes', sub: `${yes} of ${tot} reported service`, cls: 'bool-yes' }
-    if (pct <= 0.35) return { label: '✗ No',  sub: `${no} of ${tot} reported no service`, cls: 'bool-no' }
-    return { label: 'Mixed', sub: `${yes} yes · ${no} no out of ${tot}`, cls: 'bool-unk' }
-  }
-    function boolVerdictBath(yes, no, tot) {
-    if (!tot) return null
-    const pct = yes / tot
-    if (pct >= 0.65) return { label: '✓ Yes', sub: `${yes} of ${tot} reported facilities`, cls: 'bool-yes' }
-    if (pct <= 0.35) return { label: '✗ No',  sub: `${no} of ${tot} reported no facilities`, cls: 'bool-no' }
-    return { label: 'Mixed', sub: `${yes} yes · ${no} no out of ${tot}`, cls: 'bool-unk' }
-  }
-
-  // QRM label from numeric
-  function qrmLabel(n) { return QRM_NAMES[Math.round(n)] || '—' }
-
-  // Parking verdict — top answer
-  function parkingVerdict() {
-    if (!parking_total) return null
-    const counts = [['good', parking_good], ['okay', parking_okay], ['bad', parking_bad]]
-    const [top, topCount] = counts.reduce((a, b) => b[1] > a[1] ? b : a)
-    const labels = { good: '✓ Good', okay: '~ Okay', bad: '✗ Bad' }
-    const cls    = { good: 'bool-yes', okay: 'bool-unk', bad: 'bool-no' }
-    return { label: labels[top], sub: `${topCount} of ${parking_total} reported`, cls: cls[top] }
-  }
-
-  // Busyness pattern blurb
-  function busynessBlurb() {
-    if (!patterns?.length) return null
-    const score = p => parseFloat(p.avg_busyness)
-    const busy  = patterns.filter(p => score(p) >= 2.4)
-    const quiet = patterns.filter(p => score(p) <= 1.6)
-    const fmt   = p => `${p.day_type} ${p.time_of_day}s`
-
-    if (!busy.length && !quiet.length) return null
-    const parts = []
-    if (busy.length)  parts.push(`tends to be busier during ${busy.map(fmt).join(' and ')}`)
-    if (quiet.length) parts.push(`quieter during ${quiet.map(fmt).join(' and ')}`)
-    return parts.join(', ') + '.'
-  }
-
-  const cellV    = boolVerdict(cell_yes, cell_no, cell_total)
-  const bathV    = boolVerdictBath(bath_yes, bath_no, bath_total)
-  const parkingV = parkingVerdict()
-  const blurb    = busynessBlurb()
-
-  const statCards = [
-    cellV    && { heading: 'Cell Service', value: cellV.label,    sub: cellV.sub,    cls: cellV.cls },
-    bathV    && { heading: 'Bathrooms',    value: bathV.label,    sub: bathV.sub,    cls: bathV.cls },
-    qrm_total > 0 && {
-      heading: 'QRM Level',
-      value: qrm_min === qrm_max ? qrmLabel(qrm_min) : `${qrmLabel(qrm_min)} – ${qrmLabel(qrm_max)}`,
-      sub: `avg ${qrmLabel(qrm_avg)} · ${qrm_total} report${qrm_total !== 1 ? 's' : ''}`,
-      cls: '',
-    },
-    parkingV && { heading: 'Parking', value: parkingV.label, sub: parkingV.sub, cls: parkingV.cls },
-  ].filter(Boolean)
-
-  if (!statCards.length && !blurb) return null
-
-  return (
-    <div className="card">
-      <div className="card-header" style={{ alignItems: 'baseline' }}>
-        <h2>Activator Insights</h2>
-        <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-          Based on {total} report{total !== 1 ? 's' : ''}
-        </span>
-      </div>
-      <div className="card-body">
-        {statCards.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: blurb ? 16 : 0 }}>
-            {statCards.map(({ heading, value, sub, cls }) => (
-              <div key={heading} style={{ background: 'var(--green-muted)', borderRadius: 8, padding: '12px 14px' }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  {heading}
-                </div>
-                <div className={`rfval ${cls}`} style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 4 }}>
-                  {value}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sub}</div>
-              </div>
-            ))}
-          </div>
-        )}
-        {blurb && (
-          <div style={{ fontSize: '0.88rem', color: 'var(--text)', background: 'var(--green-muted)', borderRadius: 8, padding: '10px 14px' }}>
-            🕐 <strong>Busyness:</strong> This park {blurb}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function BoolToggle({ name, value, onChange }) {
-  return (
-    <div className="bool-group">
-      {[['yes', 'Yes'], ['no', 'No'], ['unknown', '?']].map(([v, label]) => (
-        <div key={v} className={`bool-opt ${v === 'yes' ? 'yes' : v === 'no' ? 'no' : 'unk'}`}>
-          <input type="radio" name={name} id={`${name}-${v}`} value={v}
-            checked={value === v} onChange={() => onChange(v)} />
-          <label htmlFor={`${name}-${v}`}>{label}</label>
-        </div>
-      ))}
-    </div>
   )
 }

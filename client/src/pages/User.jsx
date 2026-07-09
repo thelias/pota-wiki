@@ -2,35 +2,21 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav.jsx'
 import Footer from '../components/Footer.jsx'
+import Pagination from '../components/Pagination.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { QRM_LABELS } from '../constants.js'
 
-const QRM_LABELS = {
-  'very-low':  { label: 'Very Low',  cls: 'qrm-very-low'  },
-  'low':       { label: 'Low',       cls: 'qrm-low'       },
-  'normal':    { label: 'Normal',    cls: 'qrm-normal'     },
-  'high':      { label: 'High',      cls: 'qrm-high'       },
-  'very-high': { label: 'Very High', cls: 'qrm-very-high'  },
-}
+const PER_PAGE = 10
 
 export default function User() {
   const { user, loading } = useAuth()
   const navigate          = useNavigate()
   const [tab, setTab]     = useState('reports')
-  const [reports, setReports]     = useState([])
-  const [rLoading, setRLoading]   = useState(true)
 
   // Redirect if not logged in
   useEffect(() => {
     if (!loading && !user) navigate('/auth?return=/user', { replace: true })
   }, [user, loading])
-
-  useEffect(() => {
-    if (!user) return
-    fetch('/api/auth/my-reports')
-      .then(r => r.ok ? r.json() : [])
-      .then(d => { setReports(d); setRLoading(false) })
-      .catch(() => setRLoading(false))
-  }, [user])
 
   if (loading || !user) return null
 
@@ -55,7 +41,7 @@ export default function User() {
               {user.callsign}
             </div>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 2 }}>
-              {reports.length} activation report{reports.length !== 1 ? 's' : ''}
+              {user.report_count ?? '…'} activation report{user.report_count !== 1 ? 's' : ''}
             </div>
           </div>
         </div>
@@ -78,7 +64,7 @@ export default function User() {
 
           <div className="card-body">
             {tab === 'settings' && <SettingsTab user={user} />}
-            {tab === 'reports'  && <ReportsTab reports={reports} loading={rLoading} />}
+            {tab === 'reports'  && <ReportsTab userId={user.id} />}
           </div>
         </div>
       </div>
@@ -112,14 +98,40 @@ function SettingsTab({ user }) {
 
 // ── Reports tab ───────────────────────────────────────────────────────────────
 
-function ReportsTab({ reports, loading }) {
+function ReportsTab({ userId }) {
+  const [reports,    setReports]    = useState([])
+  const [total,      setTotal]      = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [page,       setPage]       = useState(1)
+  const [loading,    setLoading]    = useState(true)
+
+  function fetchPage(p) {
+    setLoading(true)
+    fetch(`/api/auth/my-reports?page=${p}&limit=${PER_PAGE}`)
+      .then(r => r.ok ? r.json() : { reports: [], total: 0, totalPages: 1 })
+      .then(({ reports, total, totalPages }) => {
+        setReports(reports)
+        setTotal(total)
+        setTotalPages(totalPages)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }
+
+  useEffect(() => { fetchPage(1) }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handlePageChange(n) {
+    setPage(n)
+    fetchPage(n)
+  }
+
   if (loading) return (
     <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)' }}>
       <span className="spinner" />
     </div>
   )
 
-  if (!reports.length) return (
+  if (!total) return (
     <div className="empty-placeholder">
       You haven't submitted any activation reports yet.{' '}
       <Link to="/" style={{ color: 'var(--green-mid)' }}>Browse parks →</Link>
@@ -184,6 +196,10 @@ function ReportsTab({ reports, loading }) {
           </div>
         </Link>
       ))}
+
+      {totalPages > 1 && (
+        <Pagination page={page} totalPages={totalPages} onPage={handlePageChange} />
+      )}
     </div>
   )
 }

@@ -119,7 +119,7 @@ router.post('/logout', (req, res) => {
 router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, email, callsign FROM users WHERE id = $1',
+      'SELECT id, email, callsign, report_count FROM users WHERE id = $1',
       [req.user.userId]
     )
     if (!rows.length) return res.status(404).json({ error: 'User not found' })
@@ -133,7 +133,17 @@ router.get('/me', requireAuth, async (req, res, next) => {
 
 router.get('/my-reports', requireAuth, async (req, res, next) => {
   try {
-    const { rows } = await pool.query(
+    const page   = Math.max(1, parseInt(req.query.page)  || 1)
+    const limit  = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10))
+    const offset = (page - 1) * limit
+
+    const { rows: [{ count }] } = await pool.query(
+      'SELECT COUNT(*) FROM activation_reports WHERE user_id = $1', [req.user.userId]
+    )
+    const total      = parseInt(count)
+    const totalPages = Math.ceil(total / limit) || 1
+
+    const { rows: reports } = await pool.query(
       `SELECT r.id, r.park_reference, r.activation_date, r.callsign,
               r.cell_service, r.bathrooms, r.qrm_level,
               r.general_comments, r.created_at,
@@ -141,10 +151,11 @@ router.get('/my-reports', requireAuth, async (req, res, next) => {
        FROM activation_reports r
        JOIN parks p ON p.reference = r.park_reference
        WHERE r.user_id = $1
-       ORDER BY r.activation_date DESC NULLS LAST, r.created_at DESC`,
-      [req.user.userId]
+       ORDER BY r.activation_date DESC NULLS LAST, r.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [req.user.userId, limit, offset]
     )
-    res.json(rows)
+    res.json({ reports, total, page, totalPages, limit })
   } catch (err) {
     next(err)
   }
@@ -254,7 +265,17 @@ router.get('/top-contributors', async (req, res, next) => {
 router.get('/users/:callsign/reports', async (req, res, next) => {
   try {
     const callsign = req.params.callsign.toUpperCase().trim()
-    const { rows } = await pool.query(
+    const page     = Math.max(1, parseInt(req.query.page)  || 1)
+    const limit    = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10))
+    const offset   = (page - 1) * limit
+
+    const { rows: [{ count }] } = await pool.query(
+      `SELECT COUNT(*) FROM activation_reports WHERE UPPER(callsign) = $1`, [callsign]
+    )
+    const total      = parseInt(count)
+    const totalPages = Math.ceil(total / limit) || 1
+
+    const { rows: reports } = await pool.query(
       `SELECT r.id, r.park_reference, r.activation_date, r.callsign,
               r.cell_service, r.bathrooms, r.qrm_level,
               r.general_comments, r.created_at,
@@ -262,10 +283,11 @@ router.get('/users/:callsign/reports', async (req, res, next) => {
        FROM activation_reports r
        JOIN parks p ON p.reference = r.park_reference
        WHERE UPPER(r.callsign) = $1
-       ORDER BY r.activation_date DESC NULLS LAST, r.created_at DESC`,
-      [callsign]
+       ORDER BY r.activation_date DESC NULLS LAST, r.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [callsign, limit, offset]
     )
-    res.json(rows)
+    res.json({ reports, total, page, totalPages, limit })
   } catch (err) {
     next(err)
   }
