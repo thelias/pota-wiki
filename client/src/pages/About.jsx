@@ -40,7 +40,7 @@ export default function About() {
           The logo and artwork for this site was done by my lovely and incredibly talented wife, Elise.
           <br/>
           <br/>
-          This site is developed and maintained by me: Elias (KK7KKT). Feel free to look me up on QRZ to get a hold of me.
+          This site is developed and maintained by me: Elias (KK7KKT). Feel free to look me up on QRZ to get ahold of me.
           <br/>
           <br/>
           Special thanks to both Eric (KJ7XJ) and Paul (W7PFB) for their feedback on this site and general elmer-ness in my radio journey. 
