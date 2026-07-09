@@ -510,7 +510,7 @@ export default function Park() {
               </div>
             )}
             {(user || user === undefined) && (
-              <form onSubmit={handleSubmit} onKeyDown={e => { if (e.key === 'Enter') e.preventDefault() }}>
+              <form onSubmit={handleSubmit} onKeyDown={e => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') e.preventDefault() }}>
                 {/* Callsign (readonly) + Date */}
                 <div className="form-grid">
                   <div className="form-row">
@@ -793,19 +793,19 @@ function ReportItem({ report: r, user, onDelete, deletingId, onLightbox, onEdit,
       {r.parking && (
         <div className="report-text-section">
           <div className="report-text-label">Parking</div>
-          {r.parking}
+          <NL text={r.parking} />
         </div>
       )}
       {r.setup_locations && (
         <div className="report-text-section">
           <div className="report-text-label">Setup Locations</div>
-          {r.setup_locations}
+          <NL text={r.setup_locations} />
         </div>
       )}
       {r.general_comments && (
         <div className="report-text-section">
           <div className="report-text-label">Comments</div>
-          {r.general_comments}
+          <NL text={r.general_comments} />
         </div>
       )}
 
@@ -819,6 +819,12 @@ function ReportItem({ report: r, user, onDelete, deletingId, onLightbox, onEdit,
       )}
     </div>
   )
+}
+
+function NL({ text }) {
+  return text.split('\n').map((line, i, arr) => (
+    <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+  ))
 }
 
 function Field({ label, value, bool }) {
