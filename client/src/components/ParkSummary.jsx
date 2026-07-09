@@ -41,7 +41,7 @@ export default function ParkSummary({ summary: s }) {
     if (!busy.length && !quiet.length) return null
     const parts = []
     if (busy.length)  parts.push(`tends to be busier during ${busy.map(fmt).join(' and ')}`)
-    if (quiet.length) parts.push(`quieter during ${quiet.map(fmt).join(' and ')}`)
+    if (quiet.length) parts.push(`is quieter during ${quiet.map(fmt).join(' and ')}`)
     return parts.join(', ') + '.'
   }
 
