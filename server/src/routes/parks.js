@@ -142,6 +142,8 @@ router.get('/', async (req, res, next) => {
     const lat    = req.query.lat != null ? parseFloat(req.query.lat) : null
     const lng    = req.query.lng != null ? parseFloat(req.query.lng) : null
 
+    const withReports = req.query.with_reports === 'true'
+
     // Build WHERE conditions dynamically
     const conditions = ['p.active = TRUE']
     const countParams = []
@@ -155,11 +157,14 @@ router.get('/', async (req, res, next) => {
       conditions.push(`p.location_desc = $${countParams.length}`)
     }
 
-    const where = conditions.join(' AND ')
+    const where    = conditions.join(' AND ')
+    const rcJoin   = withReports
+      ? `INNER JOIN (SELECT park_reference, COUNT(*)::int AS cnt FROM activation_reports GROUP BY park_reference) rc ON rc.park_reference = p.reference`
+      : `LEFT JOIN  (SELECT park_reference, COUNT(*)::int AS cnt FROM activation_reports GROUP BY park_reference) rc ON rc.park_reference = p.reference`
 
     // Total count for pagination
     const { rows: [{ count }] } = await pool.query(
-      `SELECT COUNT(*) FROM parks p WHERE ${where}`,
+      `SELECT COUNT(*) FROM parks p ${rcJoin} WHERE ${where}`,
       countParams
     )
     const total      = parseInt(count)
@@ -183,11 +188,7 @@ router.get('/', async (req, res, next) => {
     const { rows: parks } = await pool.query(
       `SELECT p.*, COALESCE(rc.cnt, 0)::int AS report_count
        FROM parks p
-       LEFT JOIN (
-         SELECT park_reference, COUNT(*)::int AS cnt
-         FROM activation_reports
-         GROUP BY park_reference
-       ) rc ON rc.park_reference = p.reference
+       ${rcJoin}
        WHERE ${where}
        ORDER BY ${orderBy}
        LIMIT $${pLimit} OFFSET $${pOffset}`,

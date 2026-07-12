@@ -35,6 +35,7 @@ export default function Home() {
   const [debSearch,  setDebSearch]  = useState('')   // debounced
   const [stateTab,   setStateTab]   = useState('ALL')
   const [page,       setPage]       = useState(1)
+  const [withReports, setWithReports] = useState(false)
   const [userCoords, setUserCoords] = useState(null)
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError,   setGeoError]   = useState(null)
@@ -64,9 +65,10 @@ export default function Home() {
     setLoading(true)
     setError(null)
     const params = new URLSearchParams({ page, limit: PAGE_SIZE })
-    if (debSearch)   params.set('search', debSearch)
+    if (debSearch)        params.set('search', debSearch)
     if (stateTab !== 'ALL') params.set('state', stateTab)
-    if (userCoords)  { params.set('lat', userCoords.lat); params.set('lng', userCoords.lng) }
+    if (withReports)      params.set('with_reports', 'true')
+    if (userCoords)       { params.set('lat', userCoords.lat); params.set('lng', userCoords.lng) }
 
     fetch(`/api/parks?${params}`)
       .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json() })
@@ -77,7 +79,7 @@ export default function Home() {
         setLoading(false)
       })
       .catch(e => { setError(e.message); setLoading(false) })
-  }, [debSearch, stateTab, page, userCoords])
+  }, [debSearch, stateTab, page, userCoords, withReports])
 
   function requestLocation() {
     if (!navigator.geolocation) return setGeoError('Geolocation not supported by your browser.')
@@ -153,6 +155,12 @@ export default function Home() {
             {geoLoading ? '…' : userCoords ? '📍 Nearest first' : '📍 Sort by closest'}
           </button>
           {geoError && <span style={{ fontSize: '0.78rem', color: '#c0392b' }}>{geoError}</span>}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: withReports ? 'var(--green-dark)' : 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap', userSelect: 'none' }}>
+            <input type="checkbox" checked={withReports}
+              onChange={e => { setWithReports(e.target.checked); setPage(1) }}
+              style={{ accentColor: 'var(--green-mid)', width: 15, height: 15, cursor: 'pointer' }} />
+            Has Activation Report
+          </label>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
             {total.toLocaleString()} park{total !== 1 ? 's' : ''}
           </span>
