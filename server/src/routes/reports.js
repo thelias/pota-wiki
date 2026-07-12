@@ -35,7 +35,7 @@ router.get('/', optionalAuth, async (req, res, next) => {
     const { rows: reports } = await pool.query(
       `SELECT * FROM activation_reports
        WHERE park_reference = $1
-       ORDER BY created_at DESC
+       ORDER BY activation_date DESC NULLS LAST, created_at DESC
        LIMIT $2 OFFSET $3`,
       [ref, limit, offset]
     )
