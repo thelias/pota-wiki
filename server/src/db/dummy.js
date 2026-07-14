@@ -11,6 +11,8 @@ import 'dotenv/config'
 import bcrypt from 'bcrypt'
 import pool from './pool.js'
 
+const isProd = process.env.NODE_ENV === 'production'
+if(isProd) throw 'ERROR PRODUCTION'
 const WIPE = process.argv.includes('--wipe')
 
 // ── Test users ────────────────────────────────────────────────────────────────
