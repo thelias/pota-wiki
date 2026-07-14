@@ -5,6 +5,7 @@
   "description": "API server for the PNW POTA Wiki",
   "main": "src/index.js",
   "scripts": {
+    "stats": "node src/db/list-users.js",
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "seed": "node src/db/seed.js",
