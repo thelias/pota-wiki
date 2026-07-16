@@ -50,13 +50,13 @@ router.post('/signup', async (req, res, next) => {
     const { rows } = await pool.query(
       `INSERT INTO users (email, callsign, password_hash)
        VALUES ($1, $2, $3)
-       RETURNING id, email, callsign`,
+       RETURNING id, email, callsign, role`,
       [email.toLowerCase().trim(), callsign.toUpperCase().trim(), hash]
     )
 
     const user = rows[0]
-    res.cookie('token', signToken({ userId: user.id, callsign: user.callsign }), COOKIE_OPTS)
-    res.status(201).json({ id: user.id, email: user.email, callsign: user.callsign })
+    res.cookie('token', signToken({ userId: user.id, callsign: user.callsign, role: user.role }), COOKIE_OPTS)
+    res.status(201).json({ id: user.id, email: user.email, callsign: user.callsign, role: user.role })
   } catch (err) {
     if (err.code === '23505') {
       const field = err.detail?.includes('email') ? 'email' : 'callsign'
@@ -100,8 +100,8 @@ router.post('/login', async (req, res, next) => {
     const valid = user && await bcrypt.compare(password, user.password_hash)
     if (!valid) return res.status(401).json({ error: 'Invalid callsign or password' })
 
-    res.cookie('token', signToken({ userId: user.id, callsign: user.callsign }), COOKIE_OPTS)
-    res.json({ id: user.id, email: user.email, callsign: user.callsign })
+    res.cookie('token', signToken({ userId: user.id, callsign: user.callsign, role: user.role }), COOKIE_OPTS)
+    res.json({ id: user.id, email: user.email, callsign: user.callsign, role: user.role })
   } catch (err) {
     next(err)
   }
@@ -119,7 +119,7 @@ router.post('/logout', (req, res) => {
 router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, email, callsign, report_count FROM users WHERE id = $1',
+      'SELECT id, email, callsign, report_count, role FROM users WHERE id = $1',
       [req.user.userId]
     )
     if (!rows.length) return res.status(404).json({ error: 'User not found' })

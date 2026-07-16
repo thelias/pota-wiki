@@ -31,3 +31,15 @@ export function optionalAuth(req, res, next) {
   }
   next()
 }
+
+export function requireMod(req, res, next) {
+  const token = req.cookies?.token
+  if (!token) return res.status(401).json({ error: 'Not authenticated' })
+  try {
+    req.user = jwt.verify(token, SECRET)
+    if (req.user.role !== 'moderator') return res.status(403).json({ error: 'Forbidden' })
+    next()
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired session' })
+  }
+}

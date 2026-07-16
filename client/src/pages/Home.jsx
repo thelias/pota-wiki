@@ -110,6 +110,12 @@ export default function Home() {
               <span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span>
               {user ? (
                 <>
+                  {user.role === 'moderator' && (
+                    <>
+                      <Link to="/admin" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>Mod Panel</Link>
+                      <span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span>
+                    </>
+                  )}
                   <Link to="/user" style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 700, textDecoration: 'none' }}>{user.callsign}</Link>
                   <span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span>
                   <button onClick={logout} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.75)', fontSize: '0.85rem' }}>Log out</button>

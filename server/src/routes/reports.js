@@ -275,7 +275,7 @@ export const editReport = async (req, res, next) => {
   }
 }
 
-// ── Delete a report (owner only) ─────────────────────────────────────────────
+// ── Delete a report (owner or moderator) ─────────────────────────────────────
 // Mounted separately at DELETE /api/reports/:id
 
 export const deleteReport = async (req, res, next) => {
@@ -288,8 +288,13 @@ export const deleteReport = async (req, res, next) => {
       'SELECT user_id FROM activation_reports WHERE id = $1', [id]
     )
     if (!rows.length) return res.status(404).json({ error: 'Report not found' })
-    if (rows[0].user_id !== req.user.userId)
+
+    const isMod   = req.user.role === 'moderator'
+    const isOwner = rows[0].user_id === req.user.userId
+    if (!isOwner && !isMod)
       return res.status(403).json({ error: 'You can only delete your own reports' })
+
+    const reportOwnerId = rows[0].user_id
 
     const { rows: photos } = await client.query(
       'SELECT filename FROM report_photos WHERE report_id = $1', [id]
@@ -299,7 +304,7 @@ export const deleteReport = async (req, res, next) => {
     await client.query('DELETE FROM activation_reports WHERE id = $1', [id])
     await client.query(
       'UPDATE users SET report_count = GREATEST(0, report_count - 1) WHERE id = $1',
-      [req.user.userId]
+      [reportOwnerId]
     )
     await client.query('COMMIT')
 

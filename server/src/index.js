@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url'
 import parksRouter from './routes/parks.js'
 import reportsRouter, { deleteReport, editReport } from './routes/reports.js'
 import authRouter from './routes/auth.js'
+import adminRouter from './routes/admin.js'
 import { requireAuth } from './middleware/auth.js'
 import { upload } from './middleware/upload.js'
 
@@ -68,6 +69,7 @@ app.use(express.static(publicDir))
 
 // ── API routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth', authLimiter, authRouter)
+app.use('/api/admin', apiLimiter, adminRouter)
 app.use('/api/parks', apiLimiter, parksRouter)
 app.use('/api/parks/:ref/reports', apiLimiter, reportsRouter)
 app.put('/api/reports/:id', apiLimiter, requireAuth, upload.array('photos', 4), editReport)

@@ -6,6 +6,7 @@ import Auth from './pages/Auth.jsx'
 import User from './pages/User.jsx'
 import About from './pages/About.jsx'
 import Help from './pages/Help.jsx'
+import Admin from './pages/Admin.jsx'
 import Profile from './pages/Profile.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
 
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/profile/:callsign"   element={<Profile />} />
           <Route path="/about"               element={<About />} />
           <Route path="/help"                element={<Help />} />
+          <Route path="/admin"               element={<Admin />} />
           <Route path="/reset-password"      element={<ResetPassword />} />
           <Route path="*"          element={<Navigate to="/" replace />} />
         </Routes>

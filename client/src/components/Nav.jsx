@@ -21,6 +21,9 @@ export default function Nav({ crumb }) {
           <span className="sep">·</span>
           {user ? (
             <>
+              {user.role === 'moderator' && (
+                <><Link to="/admin">Mod Panel</Link><span className="sep">·</span></>
+              )}
               <Link to="/user" className="callsign">{user.callsign}</Link>
               <span className="sep">·</span>
               <button onClick={logout}>Log out</button>
