@@ -4,7 +4,7 @@ import pool from './pool.js'
 await pool.query(`
   CREATE TABLE IF NOT EXISTS report_votes (
     id         SERIAL PRIMARY KEY,
-    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id    UUID    NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     report_id  INTEGER NOT NULL REFERENCES activation_reports(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(user_id, report_id)
