@@ -38,10 +38,11 @@ app.use(cors({
   credentials: true,
 }))
 
-// Auth routes: 20 requests per 15 minutes per IP
+// Auth routes: 60 requests per 15 minutes per IP
+// (covers /me on every page load, profile fetches, check-callsign, etc.)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 60,
   skip: () => !isProd,
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
