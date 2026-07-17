@@ -26,9 +26,9 @@ router.get('/', optionalAuth, async (req, res, next) => {
     const limit  = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10))
     const userId = req.user?.userId ?? null
 
-    // voted subquery — safe: userId is null or a parsed integer
-    const votedSql = `($2::int IS NOT NULL AND EXISTS (
-      SELECT 1 FROM report_votes rv WHERE rv.report_id = ar.id AND rv.user_id = $2::int
+    // voted subquery — safe: userId is null or a UUID string
+    const votedSql = `($2::uuid IS NOT NULL AND EXISTS (
+      SELECT 1 FROM report_votes rv WHERE rv.report_id = ar.id AND rv.user_id = $2::uuid
     )) AS user_voted`
 
     const { rows: [{ count }] } = await pool.query(
