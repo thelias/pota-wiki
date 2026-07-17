@@ -10,10 +10,11 @@ const PER_PAGE = 10
 export default function Profile() {
   const { callsign }             = useParams()
   const cs                       = callsign.toUpperCase()
-  const [reports, setReports]    = useState([])
-  const [total,   setTotal]      = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
-  const [page,    setPage]       = useState(1)
+  const [reports,      setReports]      = useState([])
+  const [total,        setTotal]        = useState(0)
+  const [totalPages,   setTotalPages]   = useState(1)
+  const [page,         setPage]         = useState(1)
+  const [helpfulCount, setHelpfulCount] = useState(null)
   const [loading, setLoading]    = useState(true)
   const [notFound, setNotFound]  = useState(false)
   const topRef                   = useRef(null)
@@ -22,10 +23,11 @@ export default function Profile() {
     setLoading(true)
     fetch(`/api/auth/users/${encodeURIComponent(cs)}/reports?page=${p}&limit=${PER_PAGE}`)
       .then(r => r.ok ? r.json() : Promise.reject())
-      .then(({ reports, total, totalPages }) => {
+      .then(({ reports, total, totalPages, helpful_count }) => {
         setReports(reports)
         setTotal(total)
         setTotalPages(totalPages)
+        if (helpful_count != null) setHelpfulCount(helpful_count)
         setLoading(false)
       })
       .catch(() => { setNotFound(true); setLoading(false) })
@@ -65,10 +67,23 @@ export default function Profile() {
               {cs}
             </div>
             {!loading && (
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                {total} activation report{total !== 1 ? 's' : ''}
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <span>{total} activation report{total !== 1 ? 's' : ''}</span>
+                {helpfulCount > 0 && (
+                  <span>👍 {helpfulCount} helpful vote{helpfulCount !== 1 ? 's' : ''}</span>
+                )}
               </div>
             )}
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <a href={`https://www.qrz.com/db/${cs}`} target="_blank" rel="noreferrer"
+                style={{ fontSize: '0.78rem', fontWeight: 600, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--border)', background: '#fff', color: 'var(--text-muted)', textDecoration: 'none' }}>
+                QRZ →
+              </a>
+              <a href={`https://pota.app/#/profile/${cs}`} target="_blank" rel="noreferrer"
+                style={{ fontSize: '0.78rem', fontWeight: 600, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--border)', background: '#fff', color: 'var(--text-muted)', textDecoration: 'none' }}>
+                POTA →
+              </a>
+            </div>
           </div>
         </div>
 

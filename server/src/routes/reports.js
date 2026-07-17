@@ -24,24 +24,60 @@ router.get('/', optionalAuth, async (req, res, next) => {
     const ref    = req.params.ref.toUpperCase()
     const page   = Math.max(1, parseInt(req.query.page)  || 1)
     const limit  = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10))
-    const offset = (page - 1) * limit
+    const userId = req.user?.userId ?? null
+
+    // voted subquery — safe: userId is null or a parsed integer
+    const votedSql = `($2::int IS NOT NULL AND EXISTS (
+      SELECT 1 FROM report_votes rv WHERE rv.report_id = ar.id AND rv.user_id = $2::int
+    )) AS user_voted`
 
     const { rows: [{ count }] } = await pool.query(
       'SELECT COUNT(*) FROM activation_reports WHERE park_reference = $1', [ref]
     )
-    const total      = parseInt(count)
-    const totalPages = Math.ceil(total / limit) || 1
+    const total = parseInt(count)
 
-    const { rows: reports } = await pool.query(
-      `SELECT * FROM activation_reports
-       WHERE park_reference = $1
-       ORDER BY activation_date DESC NULLS LAST, created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [ref, limit, offset]
-    )
+    // ── Pinned: highest-voted report (page 1 only, must have ≥ 1 vote) ────────
+    let pinned = null
+    if (page === 1 && total > 0) {
+      const { rows } = await pool.query(
+        `SELECT ar.*, ${votedSql}
+         FROM activation_reports ar
+         WHERE ar.park_reference = $1 AND ar.helpful_count > 0
+         ORDER BY ar.helpful_count DESC, ar.created_at DESC
+         LIMIT 1`,
+        [ref, userId]
+      )
+      pinned = rows[0] || null
+    }
 
-    if (reports.length) {
-      const ids = reports.map(r => r.id)
+    // ── Regular paginated list (excluding pinned) ─────────────────────────────
+    const pinnedId       = pinned?.id ?? null
+    const nonPinnedTotal = total - (pinnedId ? 1 : 0)
+    const totalPages     = Math.ceil(nonPinnedTotal / limit) || 1
+    const offset         = (page - 1) * limit
+
+    const { rows: reports } = pinnedId
+      ? await pool.query(
+          `SELECT ar.*, ${votedSql}
+           FROM activation_reports ar
+           WHERE ar.park_reference = $1 AND ar.id != $3
+           ORDER BY ar.activation_date DESC NULLS LAST, ar.created_at DESC
+           LIMIT $4 OFFSET $5`,
+          [ref, userId, pinnedId, limit, offset]
+        )
+      : await pool.query(
+          `SELECT ar.*, ${votedSql}
+           FROM activation_reports ar
+           WHERE ar.park_reference = $1
+           ORDER BY ar.activation_date DESC NULLS LAST, ar.created_at DESC
+           LIMIT $3 OFFSET $4`,
+          [ref, userId, limit, offset]
+        )
+
+    // ── Attach photos to all reports ──────────────────────────────────────────
+    const allReports = pinned ? [pinned, ...reports] : reports
+    if (allReports.length) {
+      const ids = allReports.map(r => r.id)
       const { rows: photos } = await pool.query(
         `SELECT * FROM report_photos WHERE report_id = ANY($1)`, [ids]
       )
@@ -50,10 +86,10 @@ router.get('/', optionalAuth, async (req, res, next) => {
         if (!byReport[p.report_id]) byReport[p.report_id] = []
         byReport[p.report_id].push(p)
       })
-      reports.forEach(r => { r.photos = byReport[r.id] || [] })
+      allReports.forEach(r => { r.photos = byReport[r.id] || [] })
     }
 
-    res.json({ reports, total, page, totalPages, limit })
+    res.json({ reports, pinned, total, page, totalPages, limit })
   } catch (err) {
     next(err)
   }
@@ -317,6 +353,73 @@ export const deleteReport = async (req, res, next) => {
     )
 
     res.json({ deleted: id })
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {})
+    next(err)
+  } finally {
+    client.release()
+  }
+}
+
+// ── Vote on a report (toggle helpful) ────────────────────────────────────────
+// Mounted separately at POST /api/reports/:id/vote
+
+export const voteReport = async (req, res, next) => {
+  const client = await pool.connect()
+  try {
+    const id = parseInt(req.params.id)
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid report ID' })
+
+    const { rows } = await client.query(
+      'SELECT user_id FROM activation_reports WHERE id = $1', [id]
+    )
+    if (!rows.length) return res.status(404).json({ error: 'Report not found' })
+    if (rows[0].user_id === req.user.userId)
+      return res.status(403).json({ error: 'You cannot vote on your own report' })
+
+    const ownerId = rows[0].user_id
+
+    await client.query('BEGIN')
+
+    const { rowCount } = await client.query(
+      'DELETE FROM report_votes WHERE user_id = $1 AND report_id = $2',
+      [req.user.userId, id]
+    )
+
+    let helpful_count, voted
+
+    if (rowCount > 0) {
+      // Un-vote
+      const { rows: [r] } = await client.query(
+        'UPDATE activation_reports SET helpful_count = GREATEST(0, helpful_count - 1) WHERE id = $1 RETURNING helpful_count',
+        [id]
+      )
+      await client.query(
+        'UPDATE users SET helpful_count = GREATEST(0, helpful_count - 1) WHERE id = $1',
+        [ownerId]
+      )
+      helpful_count = r.helpful_count
+      voted = false
+    } else {
+      // New vote
+      await client.query(
+        'INSERT INTO report_votes (user_id, report_id) VALUES ($1, $2)',
+        [req.user.userId, id]
+      )
+      const { rows: [r] } = await client.query(
+        'UPDATE activation_reports SET helpful_count = helpful_count + 1 WHERE id = $1 RETURNING helpful_count',
+        [id]
+      )
+      await client.query(
+        'UPDATE users SET helpful_count = helpful_count + 1 WHERE id = $1',
+        [ownerId]
+      )
+      helpful_count = r.helpful_count
+      voted = true
+    }
+
+    await client.query('COMMIT')
+    res.json({ helpful_count, voted })
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {})
     next(err)

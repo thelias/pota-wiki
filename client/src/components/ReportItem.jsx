@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { QRM_LABELS } from '../constants.js'
 
 function NL({ text }) {
@@ -24,10 +25,42 @@ function Field({ label, value, bool }) {
   )
 }
 
-export default function ReportItem({ report: r, user, onDelete, deletingId, onLightbox, onEdit, editingId }) {
+export default function ReportItem({ report: r, user, onDelete, deletingId, onLightbox, onEdit, editingId, onVote }) {
   const isOwner   = user && r.user_id === user.id
   const isEditing = editingId === r.id
   const qrm       = QRM_LABELS[r.qrm_level]
+  const navigate  = useNavigate()
+
+  const [localVoted, setLocalVoted] = useState(!!r.user_voted)
+  const [localCount, setLocalCount] = useState(r.helpful_count ?? 0)
+  const [voting,     setVoting]     = useState(false)
+
+  async function handleVote() {
+    if (!user) return navigate(`/auth?return=${encodeURIComponent(window.location.pathname)}`)
+    if (isOwner || voting) return
+    const prevVoted = localVoted
+    const prevCount = localCount
+    setLocalVoted(!localVoted)
+    setLocalCount(c => localVoted ? c - 1 : c + 1)
+    setVoting(true)
+    try {
+      const res  = await fetch(`/api/reports/${r.id}/vote`, { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        setLocalVoted(data.voted)
+        setLocalCount(data.helpful_count)
+        onVote?.(r.id, data)
+      } else {
+        setLocalVoted(prevVoted)
+        setLocalCount(prevCount)
+      }
+    } catch {
+      setLocalVoted(prevVoted)
+      setLocalCount(prevCount)
+    } finally {
+      setVoting(false)
+    }
+  }
 
   return (
     <div className="report-item" style={isEditing ? { outline: '2px solid var(--green-mid)', borderRadius: 'var(--radius)' } : {}}>
@@ -163,6 +196,26 @@ export default function ReportItem({ report: r, user, onDelete, deletingId, onLi
           ))}
         </div>
       )}
+
+      <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          onClick={handleVote}
+          disabled={voting || isOwner}
+          title={isOwner ? 'You cannot vote on your own report' : localVoted ? 'Remove helpful vote' : 'Mark as helpful'}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '4px 12px', borderRadius: 20,
+            border: `1px solid ${localVoted ? 'var(--green-mid)' : 'var(--border)'}`,
+            background: localVoted ? 'var(--green-muted)' : '#fff',
+            color: localVoted ? 'var(--green-dark)' : 'var(--text-muted)',
+            fontWeight: 600, fontSize: '0.82rem',
+            cursor: isOwner ? 'default' : 'pointer',
+            opacity: isOwner ? 0.45 : 1,
+            transition: 'all 0.15s',
+          }}>
+          👍 {localCount > 0 ? localCount : ''} Helpful
+        </button>
+      </div>
     </div>
   )
 }

@@ -275,19 +275,25 @@ router.get('/users/:callsign/reports', async (req, res, next) => {
     const total      = parseInt(count)
     const totalPages = Math.ceil(total / limit) || 1
 
-    const { rows: reports } = await pool.query(
-      `SELECT r.id, r.park_reference, r.activation_date, r.callsign,
-              r.cell_service, r.bathrooms, r.qrm_level,
-              r.general_comments, r.created_at,
-              p.name AS park_name
-       FROM activation_reports r
-       JOIN parks p ON p.reference = r.park_reference
-       WHERE UPPER(r.callsign) = $1
-       ORDER BY r.activation_date DESC NULLS LAST, r.created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [callsign, limit, offset]
-    )
-    res.json({ reports, total, page, totalPages, limit })
+    const [{ rows: reports }, { rows: [userRow] }] = await Promise.all([
+      pool.query(
+        `SELECT r.id, r.park_reference, r.activation_date, r.callsign,
+                r.cell_service, r.bathrooms, r.qrm_level,
+                r.general_comments, r.created_at,
+                p.name AS park_name
+         FROM activation_reports r
+         JOIN parks p ON p.reference = r.park_reference
+         WHERE UPPER(r.callsign) = $1
+         ORDER BY r.activation_date DESC NULLS LAST, r.created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [callsign, limit, offset]
+      ),
+      pool.query(
+        'SELECT helpful_count FROM users WHERE UPPER(callsign) = $1',
+        [callsign]
+      ),
+    ])
+    res.json({ reports, total, page, totalPages, limit, helpful_count: userRow?.helpful_count ?? 0 })
   } catch (err) {
     next(err)
   }

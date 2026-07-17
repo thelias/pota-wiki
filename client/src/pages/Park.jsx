@@ -25,11 +25,12 @@ export default function Park() {
 
   const [summary,   setSummary]   = useState(null)
 
-  const [reports,    setReports]    = useState([])
-  const [rTotal,     setRTotal]     = useState(0)
-  const [rTotalPages, setRTotalPages] = useState(1)
-  const [rPage,      setRPage]      = useState(1)
-  const [rLoading,   setRLoading]   = useState(true)
+  const [reports,      setReports]      = useState([])
+  const [pinnedReport, setPinnedReport] = useState(null)
+  const [rTotal,       setRTotal]       = useState(0)
+  const [rTotalPages,  setRTotalPages]  = useState(1)
+  const [rPage,        setRPage]        = useState(1)
+  const [rLoading,     setRLoading]     = useState(true)
 
   const [form,      setForm]      = useState(EMPTY_FORM)
   const [photos,    setPhotos]    = useState([])
@@ -74,14 +75,24 @@ export default function Park() {
   function fetchReports(page) {
     setRLoading(true)
     fetch(`/api/parks/${encodeURIComponent(ref)}/reports?page=${page}&limit=${REPORTS_PER_PAGE}`)
-      .then(r => r.ok ? r.json() : { reports: [], total: 0, totalPages: 1 })
-      .then(({ reports, total, totalPages }) => {
+      .then(r => r.ok ? r.json() : { reports: [], pinned: null, total: 0, totalPages: 1 })
+      .then(({ reports, pinned, total, totalPages }) => {
         setReports(reports)
+        setPinnedReport(page === 1 ? (pinned || null) : null)
         setRTotal(total)
         setRTotalPages(totalPages)
         setRLoading(false)
       })
       .catch(() => setRLoading(false))
+  }
+
+  function handleVote(reportId, result) {
+    setReports(prev => prev.map(r =>
+      r.id === reportId ? { ...r, helpful_count: result.helpful_count, user_voted: result.voted } : r
+    ))
+    if (pinnedReport?.id === reportId) {
+      setPinnedReport(prev => ({ ...prev, helpful_count: result.helpful_count, user_voted: result.voted }))
+    }
   }
 
   // Reset to page 1 when park changes
@@ -166,6 +177,7 @@ export default function Park() {
         setRemovedPhotoIds([])
         // Patch the report in the current page without a full reload
         setReports(prev => prev.map(r => r.id === data.id ? data : r))
+        if (pinnedReport?.id === data.id) setPinnedReport(data)
       } else {
         // New report — go back to page 1 to see it (newest first)
         setRPage(1)
@@ -236,7 +248,7 @@ export default function Park() {
       const res = await fetch(`/api/reports/${id}`, { method: 'DELETE' })
       if (res.ok) {
         refreshSummary()
-        // If this was the last item on the page and not page 1, go back one
+        if (pinnedReport?.id === id) setPinnedReport(null)
         const newPage = reports.length === 1 && rPage > 1 ? rPage - 1 : rPage
         setRPage(newPage)
         fetchReports(newPage)
@@ -433,11 +445,39 @@ export default function Park() {
             {!rLoading && rTotal === 0 && (
               <div className="empty-placeholder">No reports yet. Be the first to log an activation report!</div>
             )}
+
+            {/* Pinned: most helpful report */}
+            {!rLoading && pinnedReport && (
+              <div style={{
+                borderRadius: 'var(--radius)',
+                border: '2px solid var(--green-light)',
+                background: 'var(--green-muted)',
+                marginBottom: 20,
+                overflow: 'hidden',
+              }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 14px',
+                  background: 'var(--green-light)',
+                  borderBottom: '1px solid var(--green-light)',
+                }}>
+                  <span style={{ fontSize: '1rem' }}>⭐</span>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--green-dark)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Most Helpful Report · {pinnedReport.helpful_count} {pinnedReport.helpful_count === 1 ? 'vote' : 'votes'}
+                  </span>
+                </div>
+                <ReportItem report={pinnedReport} user={user}
+                  onDelete={handleDelete} deletingId={deletingId}
+                  onLightbox={setLightbox} onEdit={startEdit}
+                  editingId={editingReport?.id} onVote={handleVote} />
+              </div>
+            )}
+
             {!rLoading && reports.map(r => (
               <ReportItem key={r.id} report={r} user={user}
                 onDelete={handleDelete} deletingId={deletingId}
                 onLightbox={setLightbox} onEdit={startEdit}
-                editingId={editingReport?.id} />
+                editingId={editingReport?.id} onVote={handleVote} />
             ))}
             {!rLoading && rTotalPages > 1 && (
               <Pagination page={rPage} totalPages={rTotalPages} onPage={handlePageChange} />
