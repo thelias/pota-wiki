@@ -4,7 +4,9 @@ import sharp from 'sharp'
 import path from 'path'
 import { randomUUID } from 'crypto'
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+// application/octet-stream is included because some mobile browsers (especially iOS)
+// send image files with a generic MIME type. Sharp handles the actual type detection.
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/octet-stream']
 const MAX_SIZE_BYTES = 20 * 1024 * 1024 // 20 MB per file (pre-compression)
 const MAX_DIMENSION  = 1920             // px — longest side
 
