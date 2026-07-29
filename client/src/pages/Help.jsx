@@ -88,7 +88,9 @@ export default function Help() {
       document.getElementById('pota-embed').height = e.data.height
     }
   })
-</script>`}</pre>
+  </script>
+<!-- QRZ.com full width example -->
+<p><iframe frameborder="0" height="400px" scrolling="no" src="https://pota-wiki.com/embed/YOUR_CALLSIGN" width="100%"></iframe></p>`}</pre>
           Replace <strong>YOUR_CALLSIGN</strong> with your callsign (e.g. <code style={{ background: 'var(--green-muted)', padding: '1px 5px', borderRadius: 3 }}>KK7KKT</code>). The widget shows the park name, activation date, field summary, and comments from your most recent report. If no report exists for that callsign, a "no reports found" message is shown instead.
           <br /><br />
           The optional script block allows the iframe to automatically resize to fit its content. Without it, you can set a fixed height on the iframe element directly.
