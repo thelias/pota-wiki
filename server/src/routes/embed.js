@@ -104,7 +104,7 @@ function renderReport(r, baseUrl) {
   const mode  = Array.isArray(r.mode)  && r.mode.length  ? r.mode.join(', ')  : null
   const bands = Array.isArray(r.bands) && r.bands.length ? r.bands.join(', ') : null
 
-  const MAX_COMMENT = 240
+  const MAX_COMMENT = 500 
   const comments = r.general_comments
     ? (r.general_comments.length > MAX_COMMENT
         ? r.general_comments.slice(0, MAX_COMMENT).trimEnd() + '…'
@@ -402,7 +402,7 @@ export async function embedHandler(req, res, next) {
     res.setHeader('Content-Security-Policy', 'frame-ancestors * http: https:')
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
-    res.send(html(callsign, wikiStatsHtml, potaStatsHtml, reportHtml, baseUrl))
+    res.send(html(callsign, potaStatsHtml, wikiStatsHtml, reportHtml, baseUrl))
   } catch (err) {
     next(err)
   }
