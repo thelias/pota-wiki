@@ -1,6 +1,5 @@
 # PNW POTA Wiki — Public API
 
-Base URL: `https://pnwpota.wiki/api`
 
 All endpoints are open to cross-origin requests and require no authentication.
 
