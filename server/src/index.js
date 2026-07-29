@@ -8,9 +8,9 @@ import rateLimit from 'express-rate-limit'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-import parksRouter from './routes/parks.js'
+import parksRouter, { listParks } from './routes/parks.js'
 import reportsRouter, { deleteReport, editReport, voteReport } from './routes/reports.js'
-import authRouter from './routes/auth.js'
+import authRouter, { userParks } from './routes/auth.js'
 import adminRouter from './routes/admin.js'
 import { requireAuth } from './middleware/auth.js'
 import { upload } from './middleware/upload.js'
@@ -33,10 +33,24 @@ app.use(helmet({
   },
 }))
 
+// Credentialed requests (auth cookies) — locked to own origin in prod
 app.use(cors({
   origin: isProd ? process.env.ALLOWED_ORIGIN : true,
   credentials: true,
 }))
+
+// Public API routes — open to any origin, no credentials needed
+const openCors = cors({ origin: '*' })
+const publicApiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  skip: () => !isProd,
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+app.use('/api/parks/list', openCors, publicApiLimiter)
+app.use('/api/:callsign/parks', openCors, publicApiLimiter)
 
 // Auth routes: 60 requests per 15 minutes per IP
 // (covers /me on every page load, profile fetches, check-callsign, etc.)
@@ -70,6 +84,8 @@ app.use(express.static(publicDir))
 
 // ── API routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth', authLimiter, authRouter)
+app.get('/api/parks/list', apiLimiter, listParks)
+app.get('/api/:callsign/parks', apiLimiter, userParks)
 app.use('/api/admin', apiLimiter, adminRouter)
 app.use('/api/parks', apiLimiter, parksRouter)
 app.use('/api/parks/:ref/reports', apiLimiter, reportsRouter)

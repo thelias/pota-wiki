@@ -299,4 +299,27 @@ router.get('/users/:callsign/reports', async (req, res, next) => {
   }
 })
 
+// ── Public API: unique parks activated by callsign ────────────────────────────
+
+export async function userParks(req, res, next) {
+  try {
+    const callsign = (req.params.callsign || '').toUpperCase().trim()
+    if (!callsign) return res.status(400).json({ error: 'callsign is required' })
+
+    const { rows } = await pool.query(
+      `SELECT ar.park_reference AS reference,
+              COUNT(*) AS report_count
+       FROM activation_reports ar
+       WHERE UPPER(ar.callsign) = $1
+       GROUP BY ar.park_reference
+       ORDER BY ar.park_reference`,
+      [callsign]
+    )
+
+    res.json({ callsign, parks: rows, total: rows.length })
+  } catch (err) {
+    next(err)
+  }
+}
+
 export default router

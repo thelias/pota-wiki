@@ -366,4 +366,45 @@ async function seedLocations(locations = US_LOCATIONS) {
   }
 }
 
+// ── Public API: list all parks ────────────────────────────────────────────────
+// GET /api/parks/list
+// Query params:
+//   has_activation_report=true|false  – filter to parks that do/don't have reports
+
+export async function listParks(req, res, next) {
+  try {
+    const filter = req.query.has_activation_report
+
+    let query, params = []
+
+    if (filter === 'true') {
+      query = `
+        SELECT p.reference, TRUE AS has_activation_report
+        FROM parks p
+        WHERE p.active = TRUE
+          AND EXISTS (SELECT 1 FROM activation_reports ar WHERE ar.park_reference = p.reference)
+        ORDER BY p.reference`
+    } else if (filter === 'false') {
+      query = `
+        SELECT p.reference, FALSE AS has_activation_report
+        FROM parks p
+        WHERE p.active = TRUE
+          AND NOT EXISTS (SELECT 1 FROM activation_reports ar WHERE ar.park_reference = p.reference)
+        ORDER BY p.reference`
+    } else {
+      query = `
+        SELECT p.reference,
+               EXISTS (SELECT 1 FROM activation_reports ar WHERE ar.park_reference = p.reference) AS has_activation_report
+        FROM parks p
+        WHERE p.active = TRUE
+        ORDER BY p.reference`
+    }
+
+    const { rows } = await pool.query(query, params)
+    res.json({ parks: rows, total: rows.length })
+  } catch (err) {
+    next(err)
+  }
+}
+
 export default router
