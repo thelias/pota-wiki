@@ -104,6 +104,7 @@ function renderReport(r, baseUrl) {
 
       <div class="report-footer">
         <a href="${parkUrl}" target="_blank" rel="noreferrer">View full report →</a>
+        <span class="powered">Powered by <a href="${baseUrl}" target="_blank" rel="noreferrer">POTA Wiki</a></span>
       </div>
     </div>`
 }
@@ -281,18 +282,9 @@ function html(callsign, statsHtml, reportHtml, baseUrl) {
     }
     .report-footer a { color: ${GREEN_MID}; font-weight: 600; text-decoration: none; }
     .report-footer a:hover { text-decoration: underline; }
-
-    /* ── Widget footer ── */
-    .widget-footer {
-      padding: 6px 14px;
-      border-top: 1px solid ${BORDER};
-      font-size: 0.7rem;
-      color: ${TEXT_MUTED};
-      text-align: right;
-      background: #fff;
-    }
-    .widget-footer a { color: ${TEXT_MUTED}; text-decoration: none; }
-    .widget-footer a:hover { text-decoration: underline; }
+    .powered { color: ${TEXT_MUTED}; font-weight: 400; }
+    .powered a { color: ${TEXT_MUTED}; text-decoration: none; }
+    .powered a:hover { text-decoration: underline; }
 
     /* ── Responsive: stack on narrow ── */
     @media (max-width: 380px) {
@@ -317,9 +309,6 @@ function html(callsign, statsHtml, reportHtml, baseUrl) {
     <div class="widget-body">
       ${statsHtml}
       ${reportHtml}
-    </div>
-    <div class="widget-footer">
-      Powered by <a href="${baseUrl}" target="_blank" rel="noreferrer">POTA Wiki</a>
     </div>
   </div>
   <script>
