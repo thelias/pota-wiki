@@ -42,10 +42,10 @@ function boolField(label, value) {
     </div>`
 }
 
-function renderStats(stats, callsign, baseUrl) {
+function renderWikiStats(stats, callsign, baseUrl) {
   return `
     <div class="stats-panel">
-      <div class="stat-label">POTA Wiki Stats</div>
+      <div class="stat-label">POTA Wiki</div>
       <div class="stat-row">
         <span class="stat-num">${stats.report_count ?? 0}</span>
         <span class="stat-desc">activation report${stats.report_count !== 1 ? 's' : ''}</span>
@@ -60,6 +60,38 @@ function renderStats(stats, callsign, baseUrl) {
       </div>
       <a class="profile-link" href="${baseUrl}/profile/${encodeURIComponent(callsign)}" target="_blank" rel="noreferrer">
         View profile →
+      </a>
+    </div>`
+}
+
+function renderPotaStats(pota) {
+  if (!pota) return `
+    <div class="stats-panel">
+      <div class="stat-label">POTA</div>
+      <div style="color:${TEXT_MUTED};font-size:0.78rem;margin-top:4px;">Stats unavailable</div>
+    </div>`
+
+  return `
+    <div class="stats-panel">
+      <div class="stat-label">POTA</div>
+      <div class="stat-row">
+        <span class="stat-num">${pota.activator?.activations ?? 0}</span>
+        <span class="stat-desc">activations</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-num">${pota.activator?.parks ?? 0}</span>
+        <span class="stat-desc">parks activated</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-num">${(pota.activator?.qsos ?? 0).toLocaleString()}</span>
+        <span class="stat-desc">QSOs</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-num">${pota.awards ?? 0}</span>
+        <span class="stat-desc">award${pota.awards !== 1 ? 's' : ''}</span>
+      </div>
+      <a class="profile-link" href="https://pota.app/#/profile/${pota.callsign}" target="_blank" rel="noreferrer">
+        View on POTA →
       </a>
     </div>`
 }
@@ -116,7 +148,7 @@ function renderEmpty(baseUrl, callsign) {
     </div>`
 }
 
-function html(callsign, statsHtml, reportHtml, baseUrl) {
+function html(callsign, wikiStatsHtml, potaStatsHtml, reportHtml, baseUrl) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -164,12 +196,18 @@ function html(callsign, statsHtml, reportHtml, baseUrl) {
       flex-wrap: wrap;
     }
 
+    /* ── Divider ── */
+    .panel-divider {
+      width: 1px;
+      background: ${BORDER};
+      align-self: stretch;
+    }
+
     /* ── Stats panel ── */
     .stats-panel {
-      flex: 0 0 160px;
-      min-width: 140px;
+      flex: 0 0 150px;
+      min-width: 130px;
       padding: 14px;
-      border-right: 1px solid ${BORDER};
       background: ${GREEN_MUTED};
       display: flex;
       flex-direction: column;
@@ -287,16 +325,10 @@ function html(callsign, statsHtml, reportHtml, baseUrl) {
     .powered a:hover { text-decoration: underline; }
 
     /* ── Responsive: stack on narrow ── */
-    @media (max-width: 380px) {
-      .stats-panel {
-        flex: 1 1 100%;
-        border-right: none;
-        border-bottom: 1px solid ${BORDER};
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 12px;
-      }
-      .stat-label { width: 100%; }
+    @media (max-width: 480px) {
+      .widget-body { flex-direction: column; }
+      .panel-divider { width: auto; height: 1px; }
+      .stats-panel { flex: 1 1 100%; }
     }
   </style>
 </head>
@@ -307,7 +339,10 @@ function html(callsign, statsHtml, reportHtml, baseUrl) {
       <span class="callsign">${callsign}</span>
     </div>
     <div class="widget-body">
-      ${statsHtml}
+      ${wikiStatsHtml}
+      <div class="panel-divider"></div>
+      ${potaStatsHtml}
+      <div class="panel-divider"></div>
       ${reportHtml}
     </div>
   </div>
@@ -329,7 +364,7 @@ export async function embedHandler(req, res, next) {
     const protocol = req.headers['x-forwarded-proto'] || req.protocol
     const baseUrl  = `${protocol}://${req.headers.host}`
 
-    const [{ rows: reportRows }, { rows: statsRows }] = await Promise.all([
+    const [{ rows: reportRows }, { rows: statsRows }, potaRes] = await Promise.all([
       pool.query(
         `SELECT ar.*, p.name AS park_name
          FROM activation_reports ar
@@ -351,11 +386,15 @@ export async function embedHandler(req, res, next) {
          GROUP BY u.report_count, u.helpful_count`,
         [callsign]
       ),
+      fetch(`https://api.pota.app/stats/user/${encodeURIComponent(callsign)}`)
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null),
     ])
 
-    const stats      = statsRows[0] ?? { report_count: 0, helpful_count: 0, park_count: 0 }
-    const statsHtml  = renderStats(stats, callsign, baseUrl)
-    const reportHtml = reportRows.length
+    const wikiStats     = statsRows[0] ?? { report_count: 0, helpful_count: 0, park_count: 0 }
+    const wikiStatsHtml = renderWikiStats(wikiStats, callsign, baseUrl)
+    const potaStatsHtml = renderPotaStats(potaRes)
+    const reportHtml    = reportRows.length
       ? renderReport(reportRows[0], baseUrl)
       : renderEmpty(baseUrl, callsign)
 
@@ -363,7 +402,7 @@ export async function embedHandler(req, res, next) {
     res.setHeader('Content-Security-Policy', 'frame-ancestors * http: https:')
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
-    res.send(html(callsign, statsHtml, reportHtml, baseUrl))
+    res.send(html(callsign, wikiStatsHtml, potaStatsHtml, reportHtml, baseUrl))
   } catch (err) {
     next(err)
   }
