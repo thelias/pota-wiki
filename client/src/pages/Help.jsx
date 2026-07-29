@@ -68,6 +68,31 @@ export default function Help() {
           On the login page, click <strong>Forgot password?</strong> and enter your account email. If an account exists with that email, a reset link will be sent (valid for 1 hour). Click the link in the email, enter a new password, and you'll be redirected to log in.
         </Section>
 
+        <Section title="Embedding Your Latest Report">
+          POTA Wiki provides an embeddable widget that displays your most recent activation report by activation date. You can add it to any website, blog, or personal page using a standard HTML iframe.
+          <br /><br />
+          <strong>Embed code:</strong>
+          <pre style={{ background: 'var(--green-muted)', border: '1px solid var(--green-light)', borderRadius: 6, padding: '12px 14px', fontSize: '0.8rem', overflowX: 'auto', marginTop: 10, marginBottom: 10 }}>{`<iframe
+  src="https://pnwpota.wiki/embed/YOUR_CALLSIGN"
+  width="100%"
+  frameborder="0"
+  scrolling="no"
+  id="pota-embed">
+</iframe>
+
+<!-- Optional: auto-resize to content height -->
+<script>
+  window.addEventListener('message', e => {
+    if (e.data?.type === 'pota-wiki-embed-height') {
+      document.getElementById('pota-embed').height = e.data.height
+    }
+  })
+</script>`}</pre>
+          Replace <strong>YOUR_CALLSIGN</strong> with your callsign (e.g. <code style={{ background: 'var(--green-muted)', padding: '1px 5px', borderRadius: 3 }}>KK7KKT</code>). The widget shows the park name, activation date, field summary, and comments from your most recent report. If no report exists for that callsign, a "no reports found" message is shown instead.
+          <br /><br />
+          The optional script block allows the iframe to automatically resize to fit its content. Without it, you can set a fixed height on the iframe element directly.
+        </Section>
+
         <Section title="A Note on Data">
           POTA Wiki is not affiliated with Parks on the Air. Park data (names, references, stats, locations) is sourced from the public POTA API. Activation reports on this site are community-contributed and independent of the official POTA log.
         </Section>
