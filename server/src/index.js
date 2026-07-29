@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url'
 
 import cron from 'node-cron'
 import parksRouter, { listParks } from './routes/parks.js'
+import { embedHandler } from './routes/embed.js'
 import { syncNewParks } from './db/seed.js'
 import reportsRouter, { deleteReport, editReport, voteReport } from './routes/reports.js'
 import authRouter, { userParks } from './routes/auth.js'
@@ -26,6 +27,7 @@ app.set('trust proxy', 1)
 
 // ── Security ─────────────────────────────────────────────────────────────────
 app.use(helmet({
+  frameguard: false, // handled per-route (embed endpoint allows all origins)
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
@@ -34,6 +36,14 @@ app.use(helmet({
     },
   },
 }))
+
+// Default X-Frame-Options for all non-embed routes
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/embed/')) {
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN')
+  }
+  next()
+})
 
 // Credentialed requests (auth cookies) — locked to own origin in prod
 app.use(cors({
@@ -94,6 +104,9 @@ app.use('/api/parks/:ref/reports', apiLimiter, reportsRouter)
 app.put('/api/reports/:id', apiLimiter, requireAuth, upload.array('photos', 4), editReport)
 app.delete('/api/reports/:id', apiLimiter, requireAuth, deleteReport)
 app.post('/api/reports/:id/vote', apiLimiter, requireAuth, voteReport)
+
+// ── Embeddable widgets ────────────────────────────────────────────────────────
+app.get('/embed/:callsign', embedHandler)
 
 // ── SPA fallback (React Router) ──────────────────────────────────────────────
 app.get('*', (req, res, next) => {

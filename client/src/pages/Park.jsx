@@ -462,7 +462,7 @@ export default function Park() {
                   borderBottom: '1px solid var(--green-light)',
                 }}>
                   <span style={{ fontSize: '1rem' }}>⭐</span>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--green-dark)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     Most Helpful Report · {pinnedReport.helpful_count} {pinnedReport.helpful_count === 1 ? 'vote' : 'votes'}
                   </span>
                 </div>

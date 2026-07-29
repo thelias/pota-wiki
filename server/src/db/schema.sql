@@ -6,6 +6,9 @@ CREATE TABLE IF NOT EXISTS users (
   email         VARCHAR(255)  UNIQUE NOT NULL,
   callsign      VARCHAR(20)   UNIQUE NOT NULL,
   password_hash TEXT          NOT NULL,
+  role          VARCHAR(20)   NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'moderator')),
+  report_count  INTEGER       NOT NULL DEFAULT 0,
+  helpful_count INTEGER       NOT NULL DEFAULT 0,
   created_at    TIMESTAMPTZ   DEFAULT now()
 );
 
@@ -37,55 +40,66 @@ CREATE TABLE IF NOT EXISTS parks (
   synced_at             TIMESTAMPTZ   DEFAULT now()
 );
 
--- Migrations for existing installations
-ALTER TABLE parks ADD COLUMN IF NOT EXISTS activations INTEGER;
-ALTER TABLE parks ADD COLUMN IF NOT EXISTS attempts    INTEGER;
-ALTER TABLE parks ADD COLUMN IF NOT EXISTS qsos        INTEGER;
-
 -- Community activation reports
 CREATE TABLE IF NOT EXISTS activation_reports (
-  id               SERIAL        PRIMARY KEY,
-  park_reference   VARCHAR(20)   NOT NULL REFERENCES parks(reference) ON DELETE CASCADE,
-  callsign         VARCHAR(20)   NOT NULL,
-  activation_date  DATE,
-  cell_service     VARCHAR(10)   CHECK (cell_service IN ('yes', 'no', 'unknown')),
-  bathrooms        VARCHAR(10)   CHECK (bathrooms IN ('yes', 'no', 'unknown')),
-  qrm_level        VARCHAR(20)   CHECK (qrm_level IN ('very-low', 'low', 'normal', 'high', 'very-high')),
-  parking          TEXT,
-  setup_locations  TEXT,
-  general_comments TEXT,
-  cell_provider    TEXT,
-  antenna          TEXT,
-  mode             TEXT[],
-  power_watts      INTEGER,
-  user_id          UUID          REFERENCES users(id) ON DELETE SET NULL,
-  created_at       TIMESTAMPTZ   DEFAULT now(),
-  updated_at       TIMESTAMPTZ   DEFAULT now()
+  id                   SERIAL        PRIMARY KEY,
+  park_reference       VARCHAR(20)   NOT NULL REFERENCES parks(reference) ON DELETE CASCADE,
+  callsign             VARCHAR(20)   NOT NULL,
+  activation_date      DATE,
+  cell_service         VARCHAR(10)   CHECK (cell_service IN ('yes', 'no', 'unknown')),
+  bathrooms            VARCHAR(10)   CHECK (bathrooms IN ('yes', 'no', 'unknown')),
+  qrm_level            VARCHAR(20)   CHECK (qrm_level IN ('very-low', 'low', 'normal', 'high', 'very-high')),
+  parking              TEXT,
+  setup_locations      TEXT,
+  general_comments     TEXT,
+  cell_provider        TEXT,
+  antenna              TEXT,
+  mode                 TEXT[],
+  power_watts          INTEGER,
+  bands                TEXT[],
+  parking_availability VARCHAR(10)   CHECK (parking_availability IN ('good', 'okay', 'bad')),
+  busyness             VARCHAR(10)   CHECK (busyness IN ('quiet', 'moderate', 'busy')),
+  time_of_day          VARCHAR(10)   CHECK (time_of_day IN ('morning', 'afternoon', 'evening')),
+  helpful_count        INTEGER       NOT NULL DEFAULT 0,
+  user_id              UUID          REFERENCES users(id) ON DELETE SET NULL,
+  created_at           TIMESTAMPTZ   DEFAULT now(),
+  updated_at           TIMESTAMPTZ   DEFAULT now()
 );
-
--- Migrations for existing installations
-ALTER TABLE activation_reports ADD COLUMN IF NOT EXISTS user_id       UUID    REFERENCES users(id) ON DELETE SET NULL;
-ALTER TABLE activation_reports ADD COLUMN IF NOT EXISTS cell_provider TEXT;
-ALTER TABLE activation_reports ADD COLUMN IF NOT EXISTS antenna       TEXT;
-ALTER TABLE activation_reports ADD COLUMN IF NOT EXISTS mode          TEXT[];
-ALTER TABLE activation_reports ADD COLUMN IF NOT EXISTS power_watts   INTEGER;
-ALTER TABLE activation_reports ADD COLUMN IF NOT EXISTS bands         TEXT[];
 
 -- Photos attached to reports
 CREATE TABLE IF NOT EXISTS report_photos (
   id            SERIAL      PRIMARY KEY,
   report_id     INTEGER     NOT NULL REFERENCES activation_reports(id) ON DELETE CASCADE,
-  filename      TEXT        NOT NULL,   -- S3 object key (e.g. photos/uuid.jpg)
-  url           TEXT,                   -- full public S3/CDN URL
+  filename      TEXT        NOT NULL,
+  url           TEXT,
   original_name TEXT,
   mime_type     TEXT,
   size_bytes    INTEGER,
   uploaded_at   TIMESTAMPTZ DEFAULT now()
 );
 
--- Migration for existing installations
-ALTER TABLE report_photos ADD COLUMN IF NOT EXISTS url TEXT;
+-- Votes on activation reports
+CREATE TABLE IF NOT EXISTS report_votes (
+  id         SERIAL      PRIMARY KEY,
+  user_id    UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  report_id  INTEGER     NOT NULL REFERENCES activation_reports(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, report_id)
+);
 
-CREATE INDEX IF NOT EXISTS idx_reports_park     ON activation_reports(park_reference);
-CREATE INDEX IF NOT EXISTS idx_reports_date     ON activation_reports(activation_date DESC);
-CREATE INDEX IF NOT EXISTS idx_photos_report    ON report_photos(report_id);
+-- Password reset tokens
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id         SERIAL      PRIMARY KEY,
+  user_id    UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token      TEXT        NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at    TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_users_callsign          ON users(callsign);
+CREATE INDEX IF NOT EXISTS idx_reports_park            ON activation_reports(park_reference);
+CREATE INDEX IF NOT EXISTS idx_reports_date            ON activation_reports(activation_date DESC);
+CREATE INDEX IF NOT EXISTS idx_photos_report           ON report_photos(report_id);
+CREATE INDEX IF NOT EXISTS idx_report_votes_report_id  ON report_votes(report_id);
