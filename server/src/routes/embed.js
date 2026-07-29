@@ -136,7 +136,6 @@ function renderReport(r, baseUrl) {
 
       <div class="report-footer">
         <a href="${parkUrl}" target="_blank" rel="noreferrer">View full report →</a>
-        <span class="powered">Powered by <a href="${baseUrl}" target="_blank" rel="noreferrer">POTA Wiki</a></span>
       </div>
     </div>`
 }
@@ -168,11 +167,21 @@ function html(callsign, wikiStatsHtml, potaStatsHtml, reportHtml, baseUrl) {
 
     /* ── Outer card ── */
     .widget {
+      position: relative;
       border: 2px solid ${GREEN_LIGHT};
       border-radius: 8px;
       overflow: hidden;
       background: #fff;
     }
+    .powered {
+      position: absolute;
+      bottom: 6px;
+      right: 10px;
+      font-size: 0.68rem;
+      color: ${TEXT_MUTED};
+    }
+    .powered a { color: ${TEXT_MUTED}; text-decoration: none; }
+    .powered a:hover { text-decoration: underline; }
 
     /* ── Header ── */
     .widget-header {
@@ -320,9 +329,6 @@ function html(callsign, wikiStatsHtml, potaStatsHtml, reportHtml, baseUrl) {
     }
     .report-footer a { color: ${GREEN_MID}; font-weight: 600; text-decoration: none; }
     .report-footer a:hover { text-decoration: underline; }
-    .powered { color: ${TEXT_MUTED}; font-weight: 400; }
-    .powered a { color: ${TEXT_MUTED}; text-decoration: none; }
-    .powered a:hover { text-decoration: underline; }
 
     /* ── Responsive: stack on narrow ── */
     @media (max-width: 480px) {
@@ -345,6 +351,7 @@ function html(callsign, wikiStatsHtml, potaStatsHtml, reportHtml, baseUrl) {
       <div class="panel-divider"></div>
       ${reportHtml}
     </div>
+    <span class="powered">Powered by <a href="${baseUrl}" target="_blank" rel="noreferrer">POTA Wiki</a></span>
   </div>
   <script>
     window.addEventListener('load', () => {
