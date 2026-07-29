@@ -5,6 +5,7 @@ const GREEN_MID   = '#2d6a4f'
 const GREEN_LIGHT = '#b7e4c7'
 const GREEN_MUTED = '#f0faf4'
 const BORDER      = '#d8eddf'
+const BLACK_BORDER = '#0d0d0d'
 const TEXT_MUTED  = '#6b7c72'
 
 function field(label, value) {
@@ -39,7 +40,7 @@ function renderReport(r, callsign, baseUrl) {
   const mode  = Array.isArray(r.mode)  && r.mode.length  ? r.mode.join(', ')  : null
   const bands = Array.isArray(r.bands) && r.bands.length ? r.bands.join(', ') : null
 
-  const MAX_COMMENT = 240
+  const MAX_COMMENT = 500 
   const comments = r.general_comments
     ? (r.general_comments.length > MAX_COMMENT
         ? r.general_comments.slice(0, MAX_COMMENT).trimEnd() + '…'
@@ -117,7 +118,7 @@ function html(content) {
     }
 
     .card {
-      border: 2px solid ${GREEN_LIGHT};
+      border: 2px solid ${BLACK_BORDER};
       border-radius: 8px;
       overflow: hidden;
       background: #fff;
