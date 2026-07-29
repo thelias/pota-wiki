@@ -73,8 +73,9 @@ export default function Help() {
           <br /><br />
           <strong>Embed code:</strong>
           <pre style={{ background: 'var(--green-muted)', border: '1px solid var(--green-light)', borderRadius: 6, padding: '12px 14px', fontSize: '0.8rem', overflowX: 'auto', marginTop: 10, marginBottom: 10 }}>{`<iframe
-  src="https://pnwpota.wiki/embed/YOUR_CALLSIGN"
-  width="100%"
+  src="https://pota-wiki.com/embed/YOUR_CALLSIGN"
+  width="400px"
+  height="800px"
   frameborder="0"
   scrolling="no"
   id="pota-embed">
