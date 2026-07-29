@@ -21,6 +21,7 @@ const STATE_NAMES = {
   'US-TN': 'Tennessee',      'US-TX': 'Texas',          'US-UT': 'Utah',
   'US-VT': 'Vermont',        'US-VA': 'Virginia',       'US-WA': 'Washington',
   'US-WV': 'West Virginia',  'US-WI': 'Wisconsin',      'US-WY': 'Wyoming',
+  'PR-PR': 'Puerto Rico',
 }
 const PAGE_SIZE   = 21
 

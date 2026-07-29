@@ -19,7 +19,7 @@ const US_LOCATIONS = [
   'US-MS', 'US-MO', 'US-MT', 'US-NE', 'US-NV', 'US-NH', 'US-NJ', 'US-NM',
   'US-NY', 'US-NC', 'US-ND', 'US-OH', 'US-OK', 'US-OR', 'US-PA', 'US-RI',
   'US-SC', 'US-SD', 'US-TN', 'US-TX', 'US-UT', 'US-VT', 'US-VA', 'US-WA',
-  'US-WV', 'US-WI', 'US-WY',
+  'US-WV', 'US-WI', 'US-WY', 'PR-PR',
 ]
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -224,40 +224,6 @@ router.get('/:ref', async (req, res, next) => {
   }
 })
 
-/**
- * POST /api/parks/sync-all
- * Force re-fetch ALL parks for every PNW location from POTA API.
- * Heavy — run once. Streams progress as newline-delimited JSON.
- */
-router.post('/sync-all', async (req, res) => {
-  res.setHeader('Content-Type', 'application/x-ndjson')
-  res.setHeader('Transfer-Encoding', 'chunked')
-  res.flushHeaders()
-
-  const send = (obj) => res.write(JSON.stringify(obj) + '\n')
-
-  let totalUpserted = 0
-  for (const loc of US_LOCATIONS) {
-    send({ status: 'fetching', location: loc })
-    try {
-      const r = await fetch(`${POTA_API}/location/parks/${loc}`)
-      const parks = await r.json()
-      if (!Array.isArray(parks)) { send({ status: 'error', location: loc, msg: 'Unexpected response' }); continue }
-
-      let count = 0
-      for (const p of parks) {
-        if (!p.reference) continue
-        try { await upsertParkStats(p, loc); count++ } catch { /* skip */ }
-      }
-      totalUpserted += count
-      send({ status: 'done', location: loc, count })
-    } catch (err) {
-      send({ status: 'error', location: loc, msg: err.message })
-    }
-  }
-  send({ status: 'complete', total: totalUpserted })
-  res.end()
-})
 
 /**
  * POST /api/parks/:ref/sync

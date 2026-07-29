@@ -8,7 +8,9 @@ import rateLimit from 'express-rate-limit'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
+import cron from 'node-cron'
 import parksRouter, { listParks } from './routes/parks.js'
+import { syncNewParks } from './db/seed.js'
 import reportsRouter, { deleteReport, editReport, voteReport } from './routes/reports.js'
 import authRouter, { userParks } from './routes/auth.js'
 import adminRouter from './routes/admin.js'
@@ -107,6 +109,13 @@ app.use((err, req, res, _next) => {
   console.error(err)
   res.status(status).json({ error: message })
 })
+
+// ── Scheduled jobs ────────────────────────────────────────────────────────────
+// Sync parks from POTA API nightly at 3am
+if (isProd) {
+  cron.schedule('0 3 * * *', () => syncNewParks().catch(console.error))
+  console.log('[cron] Park sync scheduled for 3am daily')
+}
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
