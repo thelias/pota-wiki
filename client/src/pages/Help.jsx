@@ -71,6 +71,19 @@ export default function Help() {
         <Section title="Embedding Your Latest Report">
           POTA Wiki provides an embeddable widget that displays your most recent activation report by activation date. You can add it to any website, blog, or personal page using a standard HTML iframe.
           <br /><br />
+          <strong>QRZ Embed code:</strong>
+          <pre style={{ background: 'var(--green-muted)', border: '1px solid var(--green-light)', borderRadius: 6, padding: '12px 14px', fontSize: '0.8rem', overflowX: 'auto', marginTop: 10, marginBottom: 10 }}>{`
+<!-- Copy this code exactly (make sure to replace YOUR_CALLSIGN with your callsign) to your QRZ page source to  have a full page width widget in QRZ.-->
+<p>
+ <iframe 
+  frameborder="0" 
+  height="400px" 
+  scrolling="no" 
+  src="https://pota-wiki.com/embed/YOUR_CALLSIGN" 
+  width="100%">
+ </iframe>
+</p>`}</pre>
+          <br /><br />
           <strong>Embed code:</strong>
           <pre style={{ background: 'var(--green-muted)', border: '1px solid var(--green-light)', borderRadius: 6, padding: '12px 14px', fontSize: '0.8rem', overflowX: 'auto', marginTop: 10, marginBottom: 10 }}>{`<iframe
   src="https://pota-wiki.com/embed/YOUR_CALLSIGN"
