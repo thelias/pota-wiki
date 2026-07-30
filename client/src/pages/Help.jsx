@@ -73,7 +73,7 @@ export default function Help() {
           <br /><br />
           <strong>QRZ Embed code:</strong>
           <pre style={{ background: 'var(--green-muted)', border: '1px solid var(--green-light)', borderRadius: 6, padding: '12px 14px', fontSize: '0.8rem', overflowX: 'auto', marginTop: 10, marginBottom: 10 }}>{`
-<!-- Copy this code exactly (make sure to replace YOUR_CALLSIGN with your callsign) to your QRZ page source to  have a full page width widget in QRZ.-->
+<!-- Copy this code exactly (make sure to replace YOUR_CALLSIGN with your callsign) to your QRZ page source to  have a full page width widget.-->
 <p>
  <iframe 
   frameborder="0" 

@@ -8,6 +8,8 @@ export default function Footer({ back }) {
       )}
       <Link to="/help">Help</Link>
       <br/>
+      <a href="https://discord.gg/6ANJMWZFXq" target="_blank" rel="noreferrer">Join our Discord</a>
+      <br/>
       <a href="https://github.com/thelias/pota-wiki/issues/new" target="_blank" rel="noreferrer">Report a bug</a>
       <br/>
       Park data from <a href="https://pota.app" target="_blank" rel="noreferrer">Parks on the Air®</a>
