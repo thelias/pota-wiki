@@ -1,13 +1,13 @@
 /**
- * Park sync script: checks POTA's park list for each state against our DB
+ * Park sync module: checks POTA's park list for each state against our DB
  * and inserts only parks we don't already have. Skips full detail fetch for
  * existing parks — much faster than a full reseed.
  *
- * Run with: node src/db/seed.js
+ * Used by the nightly cron (index.js) and manually via run-seed.js.
+ * Does NOT call pool.end() — the caller is responsible for the pool lifecycle.
  */
 
 import 'dotenv/config'
-import path from 'path'
 import pool from './pool.js'
 
 const POTA_API = 'https://api.pota.app'
@@ -91,7 +91,6 @@ export async function syncNewParks() {
 
   if (newRefs.length === 0) {
     console.log('\nNo new parks found. DB is up to date.')
-    await pool.end()
     return
   }
 
@@ -120,10 +119,3 @@ export async function syncNewParks() {
   console.log(`\nDone. ${done} inserted, ${failed} failed.`)
 }
 
-// Allow running directly: node src/db/seed.js
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)
-if (isMain) {
-  syncNewParks()
-    .then(() => process.exit(0))
-    .catch(err => { console.error(err); process.exit(1) })
-}
