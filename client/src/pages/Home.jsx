@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import Footer from '../components/Footer.jsx'
@@ -41,6 +41,16 @@ export default function Home() {
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError,   setGeoError]   = useState(null)
   const { user, logout } = useAuth()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    function handler(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   const [homeTab,       setHomeTab]       = useState('parks')
   const [contributors,  setContributors]  = useState([])
@@ -105,31 +115,35 @@ export default function Home() {
             <img src="/logo.svg" alt="POTA Wiki" style={{ height: 110, display: 'block' }} />
             <div style={{ flex: 1 }}>
             </div>
-            {/* Inline nav user for the header */}
-            <div style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: 6, marginTop: '12px' }}>
-              <Link to="/about" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>About</Link>
-              <span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span>
-              <Link to="/help" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>Documentation</Link>
-              <span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span>
+            {/* Username + hamburger */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
               {user ? (
-                <>
-                  {user.role === 'moderator' && (
-                    <>
-                      <Link to="/admin" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>Mod Panel</Link>
-                      <span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span>
-                    </>
-                  )}
-                  <Link to="/user" style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 700, textDecoration: 'none' }}>{user.callsign}</Link>
-                  <span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span>
-                  <button onClick={logout} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.75)', fontSize: '0.85rem' }}>Log out</button>
-                </>
+                <><Link to="/user" className="nav-callsign">{user.callsign}</Link><span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span></>
               ) : user === null ? (
-                <>
-                  <Link to="/auth" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>Log in</Link>
-                  <span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span>
-                  <Link to="/auth?tab=signup" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>Sign up</Link>
-                </>
+                <><Link to="/auth" className="nav-callsign">Sign in</Link><span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span></>
               ) : null}
+
+              <div className="nav-hamburger" ref={menuRef}>
+                <button className="hamburger-btn" onClick={() => setMenuOpen(o => !o)} aria-label="Menu" aria-expanded={menuOpen}>
+                  <span className="hamburger-icon"><span /><span /><span /></span>
+                </button>
+                {menuOpen && (
+                  <div className="hamburger-menu">
+                    <Link to="/about" onClick={() => setMenuOpen(false)}>About</Link>
+                    <Link to="/help" onClick={() => setMenuOpen(false)}>Documentation</Link>
+                    {user && (
+                      <>
+                        <div className="hamburger-divider" />
+                        {user.role === 'moderator' && (
+                          <Link to="/admin" onClick={() => setMenuOpen(false)}>Mod Panel</Link>
+                        )}
+                        <button onClick={() => { logout(); setMenuOpen(false) }}>Log out</button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         </div>

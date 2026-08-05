@@ -1,9 +1,24 @@
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function Nav({ crumb }) {
   const { user, logout } = useAuth()
   const location = useLocation()
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  // Close on outside click
+  useEffect(() => {
+    function handler(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Close on navigation
+  useEffect(() => { setOpen(false) }, [location.pathname])
 
   return (
     <nav className="topnav">
@@ -16,30 +31,39 @@ export default function Nav({ crumb }) {
           </>
         )}
         <span className="nav-spacer" />
-        <div className="nav-user">
-          <Link to="/about">About</Link>
-          <span className="sep">·</span>
-          <Link to="/help">Documentation</Link>
-          <span className="sep">·</span>
-          {user ? (
-            <>
-              {user.role === 'moderator' && (
-                <><Link to="/admin">Mod Panel</Link><span className="sep">·</span></>
+
+        {user ? (
+          <><Link to="/user" className="nav-callsign">{user.callsign}</Link><span className="sep">·</span></>
+        ) : user === null ? (
+          <><Link to={`/auth?return=${encodeURIComponent(location.pathname + location.search)}`} className="nav-callsign">Sign in</Link><span className="sep">·</span></>
+        ) : null}
+
+        <div className="nav-hamburger" ref={menuRef}>
+          <button
+            className="hamburger-btn"
+            onClick={() => setOpen(o => !o)}
+            aria-label="Menu"
+            aria-expanded={open}
+          >
+            <span className="hamburger-icon">
+              <span /><span /><span />
+            </span>
+          </button>
+
+          {open && (
+            <div className="hamburger-menu">
+              <Link to="/about" onClick={() => setOpen(false)}>About</Link>
+              <Link to="/help" onClick={() => setOpen(false)}>Documentation</Link>
+              {user && (
+                <>
+                  <div className="hamburger-divider" />
+                  {user.role === 'moderator' && (
+                    <Link to="/admin" onClick={() => setOpen(false)}>Mod Panel</Link>
+                  )}
+                  <button onClick={() => { logout(); setOpen(false) }}>Log out</button>
+                </>
               )}
-              <Link to="/user" className="callsign">{user.callsign}</Link>
-              <span className="sep">·</span>
-              <button onClick={logout}>Log out</button>
-            </>
-          ) : (
-            <>
-              <Link to={`/auth?return=${encodeURIComponent(location.pathname + location.search)}`}>
-                Log in
-              </Link>
-              <span className="sep">·</span>
-              <Link to={`/auth?tab=signup&return=${encodeURIComponent(location.pathname + location.search)}`}>
-                Sign up
-              </Link>
-            </>
+            </div>
           )}
         </div>
       </div>
