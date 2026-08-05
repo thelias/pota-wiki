@@ -111,19 +111,17 @@ export default function Home() {
       {/* Header */}
       <header style={{ background: 'linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 60%, var(--green-light) 100%)', color: '#fff' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '15px 24px 15px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8, flexWrap: 'wrap' }}>
-            <img src="/logo.svg" alt="POTA Wiki" style={{ height: 110, display: 'block' }} />
-            <div style={{ flex: 1 }}>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <img src="/logo.svg" alt="POTA Wiki" style={{ height: 'clamp(64px, 15vw, 110px)', display: 'block' }} />
             {/* Username + hamburger */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {user ? (
                 <><Link to="/user" className="nav-callsign">{user.callsign}</Link><span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span></>
               ) : user === null ? (
                 <><Link to="/auth" className="nav-callsign">Sign in</Link><span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span></>
               ) : null}
 
-              <div className="nav-hamburger" ref={menuRef}>
+              <div className="nav-hamburger" ref={menuRef} style={{ marginTop: 0 }}>
                 <button className="hamburger-btn" onClick={() => setMenuOpen(o => !o)} aria-label="Menu" aria-expanded={menuOpen}>
                   <span className="hamburger-icon"><span /><span /><span /></span>
                 </button>
