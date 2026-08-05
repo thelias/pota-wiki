@@ -121,7 +121,7 @@ export default function Home() {
                 <><Link to="/auth" className="nav-callsign">Sign in</Link><span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span></>
               ) : null}
 
-              <div className="nav-hamburger" ref={menuRef} style={{ marginTop: 6 }}>
+              <div className="nav-hamburger" ref={menuRef} style={{ display: 'flex', alignItems: 'center' }}>
                 <button className="hamburger-btn" onClick={() => setMenuOpen(o => !o)} aria-label="Menu" aria-expanded={menuOpen}>
                   <span className="hamburger-icon"><span /><span /><span /></span>
                 </button>

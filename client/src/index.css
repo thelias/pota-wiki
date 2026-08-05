@@ -46,6 +46,7 @@ body {
 
 /* ── Nav callsign ─────────────────────────────────────── */
 .nav-callsign {
+  display: inline-flex; align-items: center;
   font-size: 1.06rem; font-weight: 700; text-decoration: none;
   color: rgba(255,255,255,0.9);
 }
