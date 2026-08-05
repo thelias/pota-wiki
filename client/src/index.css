@@ -215,6 +215,7 @@ body {
   transition: border-color 0.15s, background 0.15s; position: relative;
 }
 .photo-upload-area:hover { border-color: var(--green-mid); background: var(--green-muted); }
+.photo-upload-area.drag-over { border-color: var(--green-mid); background: var(--green-muted); border-style: solid; }
 .photo-upload-area input[type='file'] {
   position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
 }

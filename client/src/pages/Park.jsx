@@ -39,6 +39,7 @@ export default function Park() {
   const [submitMsg, setSubmitMsg] = useState(null)
   const fileRef = useRef(null)
 
+  const [dragOver,   setDragOver]   = useState(false)
   const [lightbox,   setLightbox]   = useState(null)
   const [deletingId, setDeletingId] = useState(null)
 
@@ -628,12 +629,22 @@ export default function Park() {
                 {/* New photos */}
                 <div className="form-row">
                   <label>{editingReport ? 'Add More Photos' : 'Photos'} (max {editingReport ? 4 - existingPhotos.length : 4})</label>
-                  <div className="photo-upload-area" onClick={() => photos.length < (editingReport ? 4 - existingPhotos.length : 4) && fileRef.current?.click()}>
+                  <div
+                    className={`photo-upload-area${dragOver ? ' drag-over' : ''}`}
+                    onClick={() => photos.length < (editingReport ? 4 - existingPhotos.length : 4) && fileRef.current?.click()}
+                    onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={e => {
+                      e.preventDefault()
+                      setDragOver(false)
+                      if (e.dataTransfer.files?.length) addPhotos(e.dataTransfer.files)
+                    }}
+                  >
                     <input ref={fileRef} type="file" accept="image/*" multiple
                       onChange={e => { addPhotos(e.target.files); e.target.value = '' }}
                       style={{ display: 'none' }} />
                     <div className="photo-upload-label">
-                      📷 Click to add photos{photos.length > 0 ? ` (${photos.length}/${editingReport ? 4 - existingPhotos.length : 4})` : ''}
+                      📷 Click or drag photos here{photos.length > 0 ? ` (${photos.length}/${editingReport ? 4 - existingPhotos.length : 4})` : ''}
                     </div>
                     {previews.length > 0 && (
                       <div className="photo-preview-row" style={{ justifyContent: 'center' }}>
