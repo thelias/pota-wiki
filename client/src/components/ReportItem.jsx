@@ -2,9 +2,56 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { QRM_LABELS } from '../constants.js'
 
+// Matches: 45.1234, -122.5678  (plain decimal, negative for S/W)
+const DECIMAL_RE = /(-?\d{1,3}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/g
+// Matches: 46.94814° N, 122.38864° W  (Apple Maps / degree+direction style)
+const DEGREE_RE = /(\d{1,3}\.\d{3,})\s*°\s*([NS])\s*,\s*(\d{1,3}\.\d{3,})\s*°\s*([EW])/gi
+
+function findCoords(line) {
+  // Collect all matches from both patterns with their index, then sort by position
+  const hits = []
+
+  let m
+  DECIMAL_RE.lastIndex = 0
+  while ((m = DECIMAL_RE.exec(line)) !== null) {
+    hits.push({ index: m.index, raw: m[0], lat: m[1], lng: m[2] })
+  }
+
+  DEGREE_RE.lastIndex = 0
+  while ((m = DEGREE_RE.exec(line)) !== null) {
+    const lat = (m[2].toUpperCase() === 'S' ? -1 : 1) * parseFloat(m[1])
+    const lng = (m[4].toUpperCase() === 'W' ? -1 : 1) * parseFloat(m[3])
+    hits.push({ index: m.index, raw: m[0], lat: lat.toString(), lng: lng.toString() })
+  }
+
+  return hits.sort((a, b) => a.index - b.index)
+}
+
+function linkifyCoords(line) {
+  const hits = findCoords(line)
+  if (!hits.length) return line
+
+  const parts = []
+  let last = 0
+  for (const { index, raw, lat, lng } of hits) {
+    if (index > last) parts.push(line.slice(last, index))
+    const url = `https://www.google.com/maps?q=${lat},${lng}`
+    parts.push(
+      <a key={index} href={url} target="_blank" rel="noreferrer"
+        className="coord-map-link"
+        onClick={e => e.stopPropagation()}>
+        📍 {raw}
+      </a>
+    )
+    last = index + raw.length
+  }
+  if (last < line.length) parts.push(line.slice(last))
+  return parts
+}
+
 function NL({ text }) {
   return text.split('\n').map((line, i, arr) => (
-    <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+    <span key={i}>{linkifyCoords(line)}{i < arr.length - 1 && <br />}</span>
   ))
 }
 

@@ -19,6 +19,8 @@ export default function Nav({ crumb }) {
         <div className="nav-user">
           <Link to="/about">About</Link>
           <span className="sep">·</span>
+          <Link to="/help">Documentation</Link>
+          <span className="sep">·</span>
           {user ? (
             <>
               {user.role === 'moderator' && (

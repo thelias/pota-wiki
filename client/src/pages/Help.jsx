@@ -68,6 +68,18 @@ export default function Help() {
           On the login page, click <strong>Forgot password?</strong> and enter your account email. If an account exists with that email, a reset link will be sent (valid for 1 hour). Click the link in the email, enter a new password, and you'll be redirected to log in.
         </Section>
 
+        <Section title="Sharing Setup Locations with Coordinates">
+          In any long-form text field on an activation report — Parking, Setup Locations, and General Comments — you can paste coordinates directly and they will automatically appear as a clickable Google Maps link when the report is viewed.
+          <br /><br />
+          Both common coordinate formats are supported:
+          <ul style={{ marginLeft: '1.5rem', marginTop: '0.5rem', lineHeight: 1.8 }}>
+            <li><strong>Decimal degrees</strong> (standard): <code style={{ background: 'var(--green-muted)', padding: '1px 5px', borderRadius: 3 }}>45.6789, -122.1234</code></li>
+            <li><strong>Degree + direction</strong> (Apple Maps): <code style={{ background: 'var(--green-muted)', padding: '1px 5px', borderRadius: 3 }}>45.12345° N, 122.98765° W</code></li>
+          </ul>
+          <br />
+          Coordinates can appear anywhere in the text — mid-sentence or on their own line. The rest of your text is unaffected.
+        </Section>
+
         <Section title="Embedding Your Latest Report">
           POTA Wiki provides an embeddable widget that displays your most recent activation report by activation date. You can add it to any website, blog, or personal page using a standard HTML iframe.
           <br /><br />

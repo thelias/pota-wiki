@@ -109,6 +109,8 @@ export default function Home() {
             <div style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: 6, marginTop: '12px' }}>
               <Link to="/about" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>About</Link>
               <span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span>
+              <Link to="/help" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>Documentation</Link>
+              <span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span>
               {user ? (
                 <>
                   {user.role === 'moderator' && (

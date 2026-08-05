@@ -603,7 +603,7 @@ export default function Park() {
                 </div>
                 <div className="form-row">
                   <label>Setup Locations</label>
-                  <textarea value={form.setup_locations} onChange={field('setup_locations')} placeholder="Where did you set up? Picnic areas, trailheads, open fields…" rows={2} />
+                  <textarea value={form.setup_locations} onChange={field('setup_locations')} placeholder="Where did you set up? (Hint: Coordinates render as a link to a map with a pin for exact locations) " rows={2} />
                 </div>
                 <div className="form-row">
                   <label>General Comments</label>
