@@ -34,9 +34,9 @@ export default function Home() {
 
   const [search,     setSearch]     = useState('')
   const [debSearch,  setDebSearch]  = useState('')   // debounced
-  const [stateTab,   setStateTab]   = useState('ALL')
+  const [stateTab,   setStateTab]   = useState(() => localStorage.getItem('filter_state') || 'ALL')
   const [page,       setPage]       = useState(1)
-  const [withReports, setWithReports] = useState(false)
+  const [withReports, setWithReports] = useState(() => localStorage.getItem('filter_with_reports') === 'true')
   const [userCoords, setUserCoords] = useState(null)
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError,   setGeoError]   = useState(null)
@@ -64,6 +64,10 @@ export default function Home() {
         .then(d => { setContributors(d); setContribLoaded(true) })
     }
   }
+
+  // Persist filter preferences
+  useEffect(() => { localStorage.setItem('filter_state', stateTab) }, [stateTab])
+  useEffect(() => { localStorage.setItem('filter_with_reports', withReports) }, [withReports])
 
   // Debounce search input — reset page on change
   useEffect(() => {
